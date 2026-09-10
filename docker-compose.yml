@@ -3,8 +3,8 @@ services:
     image: rabbitmq:3-management
     container_name: ecommerce-rabbitmq
     ports:
-      - "5672:5672"     # AMQP port (services connect here)
-      - "15672:15672"   # Management UI (browser)
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -18,18 +18,57 @@ services:
     image: postgres:16
     container_name: ecommerce-postgres
     ports:
-      - "5433:5432"     # using 5433 to avoid clashing with local postgres
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ecommerce
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  order-service:
+    build: ./services/order-service
+    container_name: ecommerce-order-service
+    ports:
+      - "8081:8081"
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ecommerce
+      PORT: "8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  inventory-service:
+    build: ./services/inventory-service
+    container_name: ecommerce-inventory-service
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ecommerce
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  payment-service:
+    build: ./services/payment-service
+    container_name: ecommerce-payment-service
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PRICE_PER_UNIT: "10"
+      PAYMENT_LIMIT: "100"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   postgres_data:
