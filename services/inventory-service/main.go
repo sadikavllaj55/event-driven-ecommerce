@@ -36,18 +36,18 @@ type PaymentResult struct {
 }
 
 func main() {
-	rabbitURL := "amqp://guest:guest@localhost:5672/"
-	dbURL := "postgres://postgres:postgres@localhost:5433/ecommerce"
+	// Load configuration
+	cfg := LoadConfig()
 
 	// Connect to PostgreSQL
-	db, err := NewDB(dbURL)
+	db, err := NewDB(cfg.DBURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Connect to RabbitMQ
-	consumer, err := NewConsumer(rabbitURL)
+	consumer, err := NewConsumer(cfg.RabbitURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}

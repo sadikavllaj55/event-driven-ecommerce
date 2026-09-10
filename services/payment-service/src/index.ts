@@ -23,10 +23,12 @@ interface PaymentResult {
   reason?: string;
 }
 
-const RABBIT_URL = 'amqp://guest:guest@localhost:5672/';
-
+const RABBIT_URL =
+  process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672/';
 // Simulated price per unit
-const PRICE_PER_UNIT = 10;
+const PRICE_PER_UNIT = Number(process.env.PRICE_PER_UNIT ?? 10);
+// Payments above this amount fail (simulated decline)
+const PAYMENT_LIMIT = Number(process.env.PAYMENT_LIMIT ?? 100);
 
 async function main() {
   const rabbit = new RabbitMQ();
@@ -40,8 +42,7 @@ async function main() {
     const amount = event.quantity * PRICE_PER_UNIT;
 
     // Simulate payment processing.
-    // Rule: payments over 100 fail (pretend the card was declined).
-    const success = amount <= 100;
+    const success = amount <= PAYMENT_LIMIT;
 
     const result: PaymentResult = {
       order_id: event.order_id,

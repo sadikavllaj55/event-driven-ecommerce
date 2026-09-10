@@ -35,17 +35,18 @@ type StockResult struct {
 }
 
 func main() {
+	// Load configuration
+	cfg := LoadConfig()
+
 	// Connect to RabbitMQ
-	rabbitURL := "amqp://guest:guest@localhost:5672/"
-	publisher, err := NewPublisher(rabbitURL)
+	publisher, err := NewPublisher(cfg.RabbitURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 	defer publisher.Close()
 
 	// Connect to PostgreSQL
-	dbURL := "postgres://postgres:postgres@localhost:5433/ecommerce"
-	db, err := NewDB(dbURL)
+	db, err := NewDB(cfg.DBURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -143,10 +144,11 @@ func main() {
 		json.NewEncoder(w).Encode(order)
 	})
 
-	port := ":8081"
+	port := ":" + cfg.Port
 	log.Printf("Order Service running on %s", port)
 
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatal(err)
 	}
+
 }
