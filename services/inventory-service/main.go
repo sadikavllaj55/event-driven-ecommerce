@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"time"
 )
@@ -24,15 +25,18 @@ type StockResult struct {
 	Reason    string `json:"reason,omitempty"`
 }
 
-// availableStock simulates our inventory (product -> units available)
-var availableStock = map[string]int{
-	"prod-123": 10,
-	"prod-456": 3,
-}
-
 func main() {
 	rabbitURL := "amqp://guest:guest@localhost:5672/"
+	dbURL := "postgres://postgres:postgres@localhost:5433/ecommerce"
 
+	// Connect to PostgreSQL
+	db, err := NewDB(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Connect to RabbitMQ
 	consumer, err := NewConsumer(rabbitURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
@@ -49,9 +53,6 @@ func main() {
 		log.Printf("Received order.created event: order %s (product %s, qty %d)",
 			order.ID, order.ProductID, order.Quantity)
 
-		// Decide whether we can reserve stock
-		available := availableStock[order.ProductID]
-
 		result := StockResult{
 			OrderID:   order.ID,
 			ProductID: order.ProductID,
@@ -60,17 +61,24 @@ func main() {
 
 		routingKey := routingKeyReserved
 
-		if available >= order.Quantity {
-			availableStock[order.ProductID] -= order.Quantity
+		// Try to reserve stock in the database
+		remaining, err := db.ReserveStock(order.ProductID, order.Quantity)
+		if err != nil {
+			if errors.Is(err, ErrInsufficientStock) {
+				result.Reserved = false
+				result.Reason = "insufficient stock"
+				routingKey = routingKeyFailed
+				log.Printf("Stock FAILED for order %s (product %s, wanted %d)",
+					order.ID, order.ProductID, order.Quantity)
+			} else {
+				// Unexpected DB error - log and skip
+				log.Printf("Database error reserving stock: %v", err)
+				return
+			}
+		} else {
 			result.Reserved = true
 			log.Printf("Stock reserved for order %s. Remaining %s: %d",
-				order.ID, order.ProductID, availableStock[order.ProductID])
-		} else {
-			result.Reserved = false
-			result.Reason = "insufficient stock"
-			routingKey = routingKeyFailed
-			log.Printf("Stock FAILED for order %s (wanted %d, have %d)",
-				order.ID, order.Quantity, available)
+				order.ID, order.ProductID, remaining)
 		}
 
 		// Publish the result back

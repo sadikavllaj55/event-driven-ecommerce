@@ -42,6 +42,14 @@ func main() {
 	}
 	defer publisher.Close()
 
+	// Connect to PostgreSQL
+	dbURL := "postgres://postgres:postgres@localhost:5433/ecommerce"
+	db, err := NewDB(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
 	// Start listening for stock results from the Inventory Service
 	err = publisher.ConsumeResults(func(routingKey string, body []byte) {
 		var result StockResult
@@ -54,10 +62,17 @@ func main() {
 		case routingKeyReserved:
 			log.Printf("Order %s CONFIRMED - stock reserved (product %s, qty %d)",
 				result.OrderID, result.ProductID, result.Quantity)
+			if err := db.UpdateOrderStatus(result.OrderID, "confirmed"); err != nil {
+				log.Printf("Failed to update order status: %v", err)
+			}
 		case routingKeyFailed:
 			log.Printf("Order %s FAILED - %s (product %s, qty %d)",
 				result.OrderID, result.Reason, result.ProductID, result.Quantity)
+			if err := db.UpdateOrderStatus(result.OrderID, "failed"); err != nil {
+				log.Printf("Failed to update order status: %v", err)
+			}
 		}
+
 	})
 	if err != nil {
 		log.Fatalf("Failed to start result consumer: %v", err)
@@ -97,6 +112,13 @@ func main() {
 		}
 
 		log.Printf("Created order: %+v", order)
+
+		// Save the order to the database
+		if err := db.SaveOrder(order); err != nil {
+			log.Printf("Failed to save order: %v", err)
+			http.Error(w, "failed to save order", http.StatusInternalServerError)
+			return
+		}
 
 		// Publish order.created event to RabbitMQ
 		if err := publisher.PublishOrderCreated(order); err != nil {
