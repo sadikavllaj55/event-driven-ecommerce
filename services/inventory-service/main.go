@@ -53,14 +53,15 @@ func main() {
 	}
 	defer consumer.Close()
 
-	err = consumer.Consume(func(routingKey string, body []byte) {
+	err = consumer.Consume(func(routingKey string, body []byte) error {
 		switch routingKey {
 		case routingKeyOrderCreated:
-			handleOrderCreated(db, consumer, body)
+			return handleOrderCreated(db, consumer, body)
 		case routingKeyPaymentFailed:
-			handlePaymentFailed(db, body)
+			return handlePaymentFailed(db, body)
 		default:
 			log.Printf("Ignoring unknown routing key: %s", routingKey)
+			return nil
 		}
 	})
 
@@ -70,11 +71,11 @@ func main() {
 }
 
 // handleOrderCreated reserves stock for a new order
-func handleOrderCreated(db *DB, consumer *Consumer, body []byte) {
+func handleOrderCreated(db *DB, consumer *Consumer, body []byte) error {
 	var order Order
 	if err := json.Unmarshal(body, &order); err != nil {
 		log.Printf("Failed to parse order.created: %v", err)
-		return
+		return err // unparseable -> dead-letter it
 	}
 
 	log.Printf("Received order.created event: order %s (product %s, qty %d)",
@@ -98,7 +99,7 @@ func handleOrderCreated(db *DB, consumer *Consumer, body []byte) {
 				order.ID, order.ProductID, order.Quantity)
 		} else {
 			log.Printf("Database error reserving stock: %v", err)
-			return
+			return err
 		}
 	} else {
 		result.Reserved = true
@@ -109,20 +110,23 @@ func handleOrderCreated(db *DB, consumer *Consumer, body []byte) {
 	resultBody, err := json.Marshal(result)
 	if err != nil {
 		log.Printf("Failed to marshal result: %v", err)
-		return
+		return err
 	}
 
 	if err := consumer.PublishResult(routingKey, resultBody); err != nil {
 		log.Printf("Failed to publish result: %v", err)
+		return err
 	}
+
+	return nil
 }
 
 // handlePaymentFailed restores stock (compensating action)
-func handlePaymentFailed(db *DB, body []byte) {
+func handlePaymentFailed(db *DB, body []byte) error {
 	var payment PaymentResult
 	if err := json.Unmarshal(body, &payment); err != nil {
 		log.Printf("Failed to parse payment.failed: %v", err)
-		return
+		return err // unparseable -> dead-letter it
 	}
 
 	log.Printf("Received payment.failed for order %s - restoring stock", payment.OrderID)
@@ -130,14 +134,16 @@ func handlePaymentFailed(db *DB, body []byte) {
 	if payment.ProductID == "" || payment.Quantity == 0 {
 		log.Printf("Cannot restore stock: missing product/quantity in payment.failed for order %s",
 			payment.OrderID)
-		return
+		return nil // nothing to restore, but not a processing failure
 	}
 
 	if err := db.RestoreStock(payment.ProductID, payment.Quantity); err != nil {
 		log.Printf("Failed to restore stock: %v", err)
-		return
+		return err
 	}
 
 	log.Printf("Stock restored for order %s (product %s, qty %d)",
 		payment.OrderID, payment.ProductID, payment.Quantity)
+
+	return nil
 }

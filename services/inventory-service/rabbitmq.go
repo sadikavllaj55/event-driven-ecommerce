@@ -12,13 +12,15 @@ const (
 	exchangeName           = "orders" // must match the Order Service exchange
 	queueName              = "inventory.events"
 	routingKeyOrderCreated = "order.created" // events we want to receive
-
 	// result routing keys we publish back
 	routingKeyReserved = "stock.reserved"
 	routingKeyFailed   = "stock.failed"
-
 	// event we listen to for compensation
 	routingKeyPaymentFailed = "payment.failed"
+	// dead-letter setup
+	dlxName       = "orders.dlx"           // dead-letter exchange
+	dlqName       = "inventory.events.dlq" // dead-letter queue
+	dlqRoutingKey = "inventory.dead"       // routing key for dead letters
 )
 
 // Consumer wraps a RabbitMQ connection and channel
@@ -53,14 +55,54 @@ func NewConsumer(url string) (*Consumer, error) {
 		return nil, err
 	}
 
-	// Declare a durable queue for this consumer
+	// --- Dead-letter setup ---
+	// Declare the dead-letter exchange (DLX)
+	if err := ch.ExchangeDeclare(
+		dlxName,  // name
+		"direct", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,
+	); err != nil {
+		return nil, err
+	}
+
+	// Declare the dead-letter queue (DLQ)
+	if _, err := ch.QueueDeclare(
+		dlqName, // name
+		true,    // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,
+	); err != nil {
+		return nil, err
+	}
+
+	// Bind the DLQ to the DLX
+	if err := ch.QueueBind(
+		dlqName,       // queue
+		dlqRoutingKey, // routing key
+		dlxName,       // exchange
+		false,
+		nil,
+	); err != nil {
+		return nil, err
+	}
+
+	// Declare the MAIN queue, configured to dead-letter failed messages to the DLX
 	_, err = ch.QueueDeclare(
 		queueName, // name
 		true,      // durable
 		false,     // delete when unused
 		false,     // exclusive
 		false,     // no-wait
-		nil,       // arguments
+		amqp.Table{
+			"x-dead-letter-exchange":    dlxName,
+			"x-dead-letter-routing-key": dlqRoutingKey,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -85,8 +127,9 @@ func NewConsumer(url string) (*Consumer, error) {
 	return &Consumer{conn: conn, channel: ch}, nil
 }
 
-// Consume starts consuming messages and calls handler for each one
-func (c *Consumer) Consume(handler func(routingKey string, body []byte)) error {
+// Consume starts consuming messages and calls handler for each one.
+// If the handler returns an error, the message is dead-lettered (sent to DLQ).
+func (c *Consumer) Consume(handler func(routingKey string, body []byte) error) error {
 	// Only give this consumer one unacknowledged message at a time (fair dispatch)
 	if err := c.channel.Qos(1, 0, false); err != nil {
 		return err
@@ -109,7 +152,12 @@ func (c *Consumer) Consume(handler func(routingKey string, body []byte)) error {
 
 	// Process messages in a loop
 	for msg := range msgs {
-		handler(msg.RoutingKey, msg.Body)
+		if err := handler(msg.RoutingKey, msg.Body); err != nil {
+			log.Printf("Handler error, dead-lettering message: %v", err)
+			// Nack without requeue -> message goes to the DLQ
+			msg.Nack(false, false)
+			continue
+		}
 		msg.Ack(false) // acknowledge after successful processing
 	}
 
