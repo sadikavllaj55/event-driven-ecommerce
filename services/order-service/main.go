@@ -30,6 +30,7 @@ type StockResult struct {
 	ProductID string `json:"product_id"`
 	Quantity  int    `json:"quantity"`
 	Reserved  bool   `json:"reserved"`
+	Amount    int    `json:"amount,omitempty"`
 	Reason    string `json:"reason,omitempty"`
 }
 
@@ -60,15 +61,25 @@ func main() {
 
 		switch routingKey {
 		case routingKeyReserved:
-			log.Printf("Order %s CONFIRMED - stock reserved (product %s, qty %d)",
+			log.Printf("Order %s - stock reserved (product %s, qty %d)",
 				result.OrderID, result.ProductID, result.Quantity)
-			if err := db.UpdateOrderStatus(result.OrderID, "confirmed"); err != nil {
+			if err := db.UpdateOrderStatus(result.OrderID, "stock_reserved"); err != nil {
 				log.Printf("Failed to update order status: %v", err)
 			}
 		case routingKeyFailed:
 			log.Printf("Order %s FAILED - %s (product %s, qty %d)",
 				result.OrderID, result.Reason, result.ProductID, result.Quantity)
 			if err := db.UpdateOrderStatus(result.OrderID, "failed"); err != nil {
+				log.Printf("Failed to update order status: %v", err)
+			}
+		case routingKeyPaymentSucceeded:
+			log.Printf("Order %s PAID (amount %d)", result.OrderID, result.Amount)
+			if err := db.UpdateOrderStatus(result.OrderID, "paid"); err != nil {
+				log.Printf("Failed to update order status: %v", err)
+			}
+		case routingKeyPaymentFailed:
+			log.Printf("Order %s PAYMENT FAILED - %s", result.OrderID, result.Reason)
+			if err := db.UpdateOrderStatus(result.OrderID, "payment_failed"); err != nil {
 				log.Printf("Failed to update order status: %v", err)
 			}
 		}

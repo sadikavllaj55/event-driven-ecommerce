@@ -17,6 +17,10 @@ const (
 	resultQueueName    = "order.stock.results"
 	routingKeyReserved = "stock.reserved"
 	routingKeyFailed   = "stock.failed"
+
+	// payment result keys
+	routingKeyPaymentSucceeded = "payment.succeeded"
+	routingKeyPaymentFailed    = "payment.failed"
 )
 
 // Publisher wraps a RabbitMQ connection and channel
@@ -111,7 +115,12 @@ func (p *Publisher) ConsumeResults(handler func(routingKey string, body []byte))
 	}
 
 	// Bind the queue to BOTH result routing keys
-	for _, key := range []string{routingKeyReserved, routingKeyFailed} {
+	for _, key := range []string{
+		routingKeyReserved,
+		routingKeyFailed,
+		routingKeyPaymentSucceeded,
+		routingKeyPaymentFailed,
+	} {
 		if err := p.channel.QueueBind(
 			resultQueueName, // queue
 			key,             // routing key
