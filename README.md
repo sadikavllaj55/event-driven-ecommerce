@@ -1,12 +1,14 @@
 # Event-Driven E-Commerce (Microservices Demo)
 
-A portfolio project demonstrating **microservices**, **event-driven architecture**, and the **Saga pattern** with compensating transactions — built with **Go**, **TypeScript**, and **RabbitMQ**.
+A portfolio project demonstrating **microservices**, **event-driven architecture**, and the **Saga pattern** with compensating transactions — built with **Go**, **TypeScript**, and **RabbitMQ**, fully containerized with **Docker**.
 
 ---
 
 ## Overview
 
 This system simulates an e-commerce order flow across multiple independent services that communicate **only through events** (RabbitMQ) — never by calling each other directly. It demonstrates a complete distributed transaction (Saga) that spans three services and two languages, including automatic rollback when a step fails.
+
+The entire system runs with a single command: `docker compose up --build`.
 
 ---
 
@@ -56,7 +58,7 @@ order.created
 | Services (TypeScript) | Payment Service                           |
 | Messaging             | RabbitMQ (topic exchange, durable queues) |
 | Database              | PostgreSQL (database-per-service pattern) |
-| Infrastructure        | Docker Compose                            |
+| Infrastructure        | Docker & Docker Compose                   |
 
 ---
 
@@ -89,66 +91,24 @@ All services communicate through a single RabbitMQ **topic exchange** (`orders`)
 ### Prerequisites
 
 - Docker & Docker Compose
-- Go 1.21+
-- Node.js 20+
 
-### 1. Start infrastructure (RabbitMQ + PostgreSQL)
+### Run everything with one command
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-RabbitMQ Management UI: http://localhost:15672 (guest / guest)
+This starts:
 
-### 2. Create database tables
+- **RabbitMQ** (management UI at http://localhost:15672 — guest / guest)
+- **PostgreSQL** (tables auto-created and seeded on first run)
+- **Order Service** (http://localhost:8081)
+- **Inventory Service**
+- **Payment Service**
 
-```bash
-docker exec -it ecommerce-postgres psql -U postgres -d ecommerce
-```
+That's it — the entire distributed system is up and ready.
 
-```sql
-CREATE TABLE orders (
-    id UUID PRIMARY KEY,
-    product_id TEXT NOT NULL,
-    quantity INT NOT NULL,
-    status TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE stock (
-    product_id TEXT PRIMARY KEY,
-    available INT NOT NULL
-);
-
-INSERT INTO stock (product_id, available) VALUES
-    ('prod-123', 10),
-    ('prod-456', 3);
-```
-
-### 3. Configure each service
-
-Each service reads config from a `.env` file. Copy the examples:
-
-```bash
-cp services/order-service/.env.example services/order-service/.env
-cp services/inventory-service/.env.example services/inventory-service/.env
-cp services/payment-service/.env.example services/payment-service/.env
-```
-
-### 4. Run the services (each in its own terminal)
-
-```bash
-# Inventory Service
-cd services/inventory-service && go run .
-
-# Payment Service
-cd services/payment-service && npm install && npm start
-
-# Order Service
-cd services/order-service && go run .
-```
-
-### 5. Place an order
+### Place an order
 
 ```bash
 # Successful order (small amount)
@@ -157,7 +117,17 @@ curl -X POST http://localhost:8081/orders \
   -d '{"product_id": "prod-123", "quantity": 3}'
 ```
 
-Watch the logs flow across all three services as the saga completes.
+Watch the logs flow across all services as the saga completes.
+
+### Running services individually (optional, for development)
+
+Each service can also be run directly (requires Go 1.27+ and Node.js 20+). Copy the `.env.example` in each service folder to `.env`, then:
+
+```bash
+cd services/order-service && go run .
+cd services/inventory-service && go run .
+cd services/payment-service && npm install && npm start
+```
 
 ---
 
@@ -190,12 +160,13 @@ curl -X POST http://localhost:8081/orders \
 - **Transaction-safe operations** — stock reservation uses row locking (`SELECT ... FOR UPDATE`) to prevent race conditions
 - **Reliable messaging** — durable queues, persistent messages, manual acknowledgements
 - **Cross-language interoperability** — Go and TypeScript services communicating seamlessly
+- **Containerization** — the full system runs with a single `docker compose up`
 
 ---
 
 ## Status
 
-✅ Core saga complete (order → stock → payment) with compensation.
+✅ Core saga complete (order → stock → payment) with compensation, fully containerized.
 
 **Planned next:**
 
@@ -203,4 +174,4 @@ curl -X POST http://localhost:8081/orders \
 - API Gateway with authentication
 - Dead-letter queues & retry logic
 - Observability (metrics, tracing)
-- Full containerization of services
+- Automated tests
