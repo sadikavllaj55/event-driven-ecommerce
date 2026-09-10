@@ -16,6 +16,8 @@ interface StockResult {
 // Shape of the payment result event we publish
 interface PaymentResult {
   order_id: string;
+  product_id: string;
+  quantity: number;
   amount: number;
   success: boolean;
   reason?: string;
@@ -43,6 +45,8 @@ async function main() {
 
     const result: PaymentResult = {
       order_id: event.order_id,
+      product_id: event.product_id,
+      quantity: event.quantity,
       amount,
       success,
     };

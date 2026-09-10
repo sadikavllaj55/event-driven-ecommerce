@@ -81,6 +81,15 @@ func (db *DB) ReserveStock(productID string, quantity int) (int, error) {
 	return remaining, nil
 }
 
+// RestoreStock adds units back to a product's stock (compensating action)
+func (db *DB) RestoreStock(productID string, quantity int) error {
+	_, err := db.pool.Exec(context.Background(),
+		`UPDATE stock SET available = available + $1 WHERE product_id = $2`,
+		quantity, productID,
+	)
+	return err
+}
+
 // Close shuts down the connection pool
 func (db *DB) Close() {
 	db.pool.Close()

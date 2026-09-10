@@ -9,13 +9,16 @@ import (
 )
 
 const (
-	exchangeName = "orders" // must match the Order Service exchange
-	queueName    = "inventory.order.created"
-	routingKey   = "order.created" // events we want to receive
+	exchangeName           = "orders" // must match the Order Service exchange
+	queueName              = "inventory.events"
+	routingKeyOrderCreated = "order.created" // events we want to receive
 
 	// result routing keys we publish back
 	routingKeyReserved = "stock.reserved"
 	routingKeyFailed   = "stock.failed"
+
+	// event we listen to for compensation
+	routingKeyPaymentFailed = "payment.failed"
 )
 
 // Consumer wraps a RabbitMQ connection and channel
@@ -63,26 +66,27 @@ func NewConsumer(url string) (*Consumer, error) {
 		return nil, err
 	}
 
-	// Bind the queue to the exchange with the routing key
-	err = ch.QueueBind(
-		queueName,    // queue name
-		routingKey,   // routing key
-		exchangeName, // exchange
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, err
+	// Bind the queue to the routing keys we care about
+	for _, key := range []string{routingKeyOrderCreated, routingKeyPaymentFailed} {
+		if err := ch.QueueBind(
+			queueName,    // queue name
+			key,          // routing key
+			exchangeName, // exchange
+			false,
+			nil,
+		); err != nil {
+			return nil, err
+		}
 	}
 
-	log.Printf("Connected to RabbitMQ. Queue %q bound to exchange %q with key %q",
-		queueName, exchangeName, routingKey)
+	log.Printf("Connected to RabbitMQ. Queue %q bound to exchange %q for order.created and payment.failed",
+		queueName, exchangeName)
 
 	return &Consumer{conn: conn, channel: ch}, nil
 }
 
 // Consume starts consuming messages and calls handler for each one
-func (c *Consumer) Consume(handler func(body []byte)) error {
+func (c *Consumer) Consume(handler func(routingKey string, body []byte)) error {
 	// Only give this consumer one unacknowledged message at a time (fair dispatch)
 	if err := c.channel.Qos(1, 0, false); err != nil {
 		return err
@@ -105,21 +109,11 @@ func (c *Consumer) Consume(handler func(body []byte)) error {
 
 	// Process messages in a loop
 	for msg := range msgs {
-		handler(msg.Body)
+		handler(msg.RoutingKey, msg.Body)
 		msg.Ack(false) // acknowledge after successful processing
 	}
 
 	return nil
-}
-
-// Close cleanly shuts down the channel and connection
-func (c *Consumer) Close() {
-	if c.channel != nil {
-		c.channel.Close()
-	}
-	if c.conn != nil {
-		c.conn.Close()
-	}
 }
 
 // PublishResult publishes a result event (stock.reserved or stock.failed)
@@ -145,4 +139,14 @@ func (c *Consumer) PublishResult(routingKey string, body []byte) error {
 
 	log.Printf("Published %s event", routingKey)
 	return nil
+}
+
+// Close cleanly shuts down the channel and connection
+func (c *Consumer) Close() {
+	if c.channel != nil {
+		c.channel.Close()
+	}
+	if c.conn != nil {
+		c.conn.Close()
+	}
 }
