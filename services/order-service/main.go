@@ -24,6 +24,15 @@ type CreateOrderRequest struct {
 	Quantity  int    `json:"quantity"`
 }
 
+// StockResult mirrors the result published by the Inventory Service
+type StockResult struct {
+	OrderID   string `json:"order_id"`
+	ProductID string `json:"product_id"`
+	Quantity  int    `json:"quantity"`
+	Reserved  bool   `json:"reserved"`
+	Reason    string `json:"reason,omitempty"`
+}
+
 func main() {
 	// Connect to RabbitMQ
 	rabbitURL := "amqp://guest:guest@localhost:5672/"
@@ -32,6 +41,27 @@ func main() {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 	defer publisher.Close()
+
+	// Start listening for stock results from the Inventory Service
+	err = publisher.ConsumeResults(func(routingKey string, body []byte) {
+		var result StockResult
+		if err := json.Unmarshal(body, &result); err != nil {
+			log.Printf("Failed to parse stock result: %v", err)
+			return
+		}
+
+		switch routingKey {
+		case routingKeyReserved:
+			log.Printf("Order %s CONFIRMED - stock reserved (product %s, qty %d)",
+				result.OrderID, result.ProductID, result.Quantity)
+		case routingKeyFailed:
+			log.Printf("Order %s FAILED - %s (product %s, qty %d)",
+				result.OrderID, result.Reason, result.ProductID, result.Quantity)
+		}
+	})
+	if err != nil {
+		log.Fatalf("Failed to start result consumer: %v", err)
+	}
 
 	mux := http.NewServeMux()
 

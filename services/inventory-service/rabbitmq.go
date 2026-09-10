@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -10,6 +12,10 @@ const (
 	exchangeName = "orders" // must match the Order Service exchange
 	queueName    = "inventory.order.created"
 	routingKey   = "order.created" // events we want to receive
+
+	// result routing keys we publish back
+	routingKeyReserved = "stock.reserved"
+	routingKeyFailed   = "stock.failed"
 )
 
 // Consumer wraps a RabbitMQ connection and channel
@@ -114,4 +120,29 @@ func (c *Consumer) Close() {
 	if c.conn != nil {
 		c.conn.Close()
 	}
+}
+
+// PublishResult publishes a result event (stock.reserved or stock.failed)
+func (c *Consumer) PublishResult(routingKey string, body []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := c.channel.PublishWithContext(ctx,
+		exchangeName, // exchange
+		routingKey,   // "stock.reserved" or "stock.failed"
+		false,        // mandatory
+		false,        // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Body:         body,
+			Timestamp:    time.Now(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Published %s event", routingKey)
+	return nil
 }
