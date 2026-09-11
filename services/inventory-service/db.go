@@ -58,13 +58,14 @@ func (db *DB) ReserveStock(productID string, quantity int) (int, error) {
 		return 0, err
 	}
 
-	// Not enough stock
-	if available < quantity {
+	// Not enough stock (uses the same logic covered by unit tests)
+	if !CanReserve(available, quantity) {
 		return available, ErrInsufficientStock
 	}
 
 	// Decrement and save
-	remaining := available - quantity
+	remaining := RemainingAfterReserve(available, quantity)
+
 	_, err = tx.Exec(ctx,
 		`UPDATE stock SET available = $1 WHERE product_id = $2`,
 		remaining, productID,
