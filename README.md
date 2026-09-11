@@ -264,17 +264,6 @@ cd services/api-gateway && npm install && npm start
 
 ---
 
-## Why Go and TypeScript?
-
-Because services communicate only through language-agnostic RabbitMQ events, each service uses the best-fit language for its job:
-
-- **Go** — the performance-critical, concurrency-heavy core services (Order, Inventory), where goroutines, explicit error handling, and small static binaries shine.
-- **TypeScript** — the I/O-bound integration services (API Gateway, Payment, Notification), where the Node ecosystem for web, auth middleware, and third-party SDKs (payment/notification providers) is strongest.
-
-This demonstrates a core advantage of event-driven microservices: **teams can pick the right tool per service, and services in different languages interoperate seamlessly.**
-
----
-
 ## Status
 
 ✅ Fully functional: secured API gateway (JWT + rate limiting + RBAC) → order saga (stock → payment) → compensation + notifications, with dead-letter handling, automated tests, fully containerized.
