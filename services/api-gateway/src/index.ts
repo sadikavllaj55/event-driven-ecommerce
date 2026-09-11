@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { rateLimiter } from './middleware/rateLimiter.ts';
 import { requireRole } from './middleware/rbac.ts';
+import helmet from 'helmet';
 
 const PORT = process.env.PORT ?? '8080';
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
@@ -11,6 +12,7 @@ const ORDER_SERVICE_URL =
   process.env.ORDER_SERVICE_URL ?? 'http://localhost:8081';
 
 const app = express();
+app.use(helmet());
 app.use(express.json());
 app.use(requestLogger);
 app.use(rateLimiter);
