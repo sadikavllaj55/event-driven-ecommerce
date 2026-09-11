@@ -1,12 +1,12 @@
 # Event-Driven E-Commerce (Microservices Demo)
 
-A portfolio project demonstrating **microservices**, **event-driven architecture**, the **Saga pattern** with compensating transactions, **JWT authentication**, and **dead-letter queues** — built with **Go**, **TypeScript**, and **RabbitMQ**, fully containerized with **Docker**.
+A portfolio project demonstrating **microservices**, **event-driven architecture**, the **Saga pattern** with compensating transactions, a **secured API Gateway** (JWT + rate limiting + RBAC), and **dead-letter queues** — built with **Go**, **TypeScript**, and **RabbitMQ**, fully containerized with **Docker**.
 
 ---
 
 ## Overview
 
-This system simulates an e-commerce order flow across multiple independent services that communicate **only through events** (RabbitMQ) — never by calling each other directly. It demonstrates a complete distributed transaction (Saga) spanning multiple services and two languages, including automatic rollback when a step fails, secured behind an authenticating API Gateway.
+This system simulates an e-commerce order flow across multiple independent services that communicate **only through events** (RabbitMQ) — never by calling each other directly. It demonstrates a complete distributed transaction (Saga) spanning multiple services and two languages, including automatic rollback when a step fails, all secured behind an API Gateway with a layered security middleware stack.
 
 The entire system runs with a single command: `docker compose up --build`.
 
@@ -54,15 +54,43 @@ order.created
 
 ---
 
+## API Gateway Security
+
+All client traffic passes through the API Gateway, which applies a layered security middleware stack (defense in depth):
+
+```
+Request
+  → Request Logger    📝  logs method, path, status, duration
+  → Rate Limiter      🚦  blocks request floods (429 Too Many Requests)
+  → Authentication    🔐  verifies JWT (401 if missing/invalid)
+  → Authorization     👮  role-based access control (403 if wrong role)
+  → Route handler
+```
+
+| Layer                  | Purpose                                               |
+| ---------------------- | ----------------------------------------------------- |
+| **Request Logging**    | Structured logging of every request for observability |
+| **Rate Limiting**      | Sliding-window limit per IP to prevent abuse / DoS    |
+| **JWT Authentication** | Verifies identity via signed tokens                   |
+| **RBAC**               | Enforces permissions based on the user's role claim   |
+
+**Authentication vs. Authorization:**
+
+- `401 Unauthorized` — you're not logged in (no/invalid token)
+- `403 Forbidden` — you're logged in, but not permitted for this action
+
+---
+
 ## Tech Stack
 
 | Concern               | Technology                                                   |
 | --------------------- | ------------------------------------------------------------ |
 | Services (Go)         | Order Service, Inventory Service                             |
 | Services (TypeScript) | API Gateway, Payment Service, Notification Service           |
-| Authentication        | JWT (JSON Web Tokens)                                        |
+| Security              | JWT auth, rate limiting, RBAC middleware                     |
 | Messaging             | RabbitMQ (topic exchange, durable queues, dead-letter queue) |
 | Database              | PostgreSQL (database-per-service pattern)                    |
+| Testing               | Go built-in testing, Node.js built-in test runner            |
 | Infrastructure        | Docker & Docker Compose                                      |
 
 ---
@@ -71,7 +99,7 @@ order.created
 
 | Service              | Language   | Port | Responsibility                                       |
 | -------------------- | ---------- | ---- | ---------------------------------------------------- |
-| API Gateway          | TypeScript | 8080 | Single entry point, JWT auth, request forwarding     |
+| API Gateway          | TypeScript | 8080 | Entry point, security middleware, request forwarding |
 | Order Service        | Go         | 8081 | Creates orders, orchestrates the saga, tracks status |
 | Inventory Service    | Go         | —    | Reserves & restores stock (transaction-safe)         |
 | Payment Service      | TypeScript | —    | Processes payments (simulated)                       |
@@ -112,22 +140,25 @@ This starts:
 - **RabbitMQ** (management UI at http://localhost:15672 — guest / guest)
 - **PostgreSQL** (tables auto-created and seeded on first run)
 - **API Gateway** (http://localhost:8080)
-- **Order Service** (http://localhost:8081)
-- **Inventory Service**
-- **Payment Service**
-- **Notification Service**
-
-That's it — the entire distributed system is up and ready.
+- **Order, Inventory, Payment, Notification services**
 
 ---
 
 ## Usage
 
-The API Gateway secures all order requests with JWT authentication.
+The API Gateway secures all order requests with JWT authentication and RBAC.
 
 ### 1. Log in to get a token
 
+Two demo accounts are available:
+
 ```bash
+# Regular user
+curl -X POST http://localhost:8080/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "user", "password": "password"}'
+
+# Admin
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "password"}'
@@ -148,9 +179,15 @@ curl -X POST http://localhost:8080/orders \
   -d '{"product_id": "prod-123", "quantity": 2}'
 ```
 
-Watch the logs flow across all services as the saga completes.
+### 3. Access an admin-only endpoint (RBAC)
 
-> Requests without a valid token receive `401 Unauthorized`.
+```bash
+curl http://localhost:8080/admin/stats \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+- With an **admin** token → `200 OK`
+- With a **user** token → `403 Forbidden`
 
 ---
 
@@ -174,7 +211,23 @@ curl -X POST http://localhost:8080/orders \
   -d '{"product_id": "prod-123", "quantity": 12}'
 ```
 
-**Dead-letter queue:** publish a malformed message to the `orders` exchange (routing key `order.created`) via the RabbitMQ UI — it will be routed to `inventory.events.dlq`.
+**Rate limiting** — send more than 5 requests within 10 seconds to receive `429 Too Many Requests`.
+
+**Dead-letter queue** — publish a malformed message to the `orders` exchange (routing key `order.created`) via the RabbitMQ UI — it is routed to `inventory.events.dlq`.
+
+---
+
+## Testing
+
+Unit tests cover core business logic in both languages.
+
+```bash
+# Go tests (Inventory Service)
+cd services/inventory-service && go test ./...
+
+# TypeScript tests (Payment Service)
+cd services/payment-service && npm test
+```
 
 ---
 
@@ -194,26 +247,41 @@ cd services/api-gateway && npm install && npm start
 
 ## Key Patterns Demonstrated
 
-- **API Gateway** — single entry point with JWT authentication at the edge
+- **API Gateway** — single entry point with a layered security middleware stack
+- **Defense in depth** — logging, rate limiting, authentication, and authorization as composable middleware
+- **JWT authentication + RBAC** — identity verification and role-based permissions
 - **Event-driven architecture** — services are fully decoupled via RabbitMQ
 - **Saga pattern** — multi-step distributed transaction with orchestration
 - **Compensating transactions** — automatic rollback (stock restored on payment failure)
-- **Fan-out / pub-sub** — multiple services independently consume the same events (Order and Notification both react to `payment.succeeded`)
-- **Dead-letter queue** — poison messages are quarantined instead of lost or blocking the queue
+- **Fan-out / pub-sub** — multiple services independently consume the same events
+- **Dead-letter queue** — poison messages are quarantined instead of lost
 - **Database-per-service** — each service owns its data
-- **Transaction-safe operations** — stock reservation uses row locking (`SELECT ... FOR UPDATE`) to prevent race conditions
+- **Transaction-safe operations** — stock reservation uses row locking (`SELECT ... FOR UPDATE`)
 - **Reliable messaging** — durable queues, persistent messages, manual acknowledgements
 - **Cross-language interoperability** — Go and TypeScript services communicating seamlessly
+- **Automated testing** — unit tests in both Go and TypeScript
 - **Containerization** — the full system runs with a single `docker compose up`
+
+---
+
+## Why Go and TypeScript?
+
+Because services communicate only through language-agnostic RabbitMQ events, each service uses the best-fit language for its job:
+
+- **Go** — the performance-critical, concurrency-heavy core services (Order, Inventory), where goroutines, explicit error handling, and small static binaries shine.
+- **TypeScript** — the I/O-bound integration services (API Gateway, Payment, Notification), where the Node ecosystem for web, auth middleware, and third-party SDKs (payment/notification providers) is strongest.
+
+This demonstrates a core advantage of event-driven microservices: **teams can pick the right tool per service, and services in different languages interoperate seamlessly.**
 
 ---
 
 ## Status
 
-✅ Fully functional: authenticated API gateway → order saga (stock → payment) → compensation + notifications, with dead-letter handling, fully containerized.
+✅ Fully functional: secured API gateway (JWT + rate limiting + RBAC) → order saga (stock → payment) → compensation + notifications, with dead-letter handling, automated tests, fully containerized.
 
 **Planned next:**
 
-- Automated tests
+- Security headers (helmet)
+- CI pipeline (GitHub Actions)
 - Health checks & graceful shutdown
 - Observability (metrics, tracing)
