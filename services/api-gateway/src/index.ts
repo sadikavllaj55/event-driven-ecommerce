@@ -1,6 +1,9 @@
 import express from 'express';
+import { requestLogger } from './middleware/logger.ts';
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { rateLimiter } from './middleware/rateLimiter.ts';
+import { requireRole } from './middleware/rbac.ts';
 
 const PORT = process.env.PORT ?? '8080';
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
@@ -9,6 +12,8 @@ const ORDER_SERVICE_URL =
 
 const app = express();
 app.use(express.json());
+app.use(requestLogger);
+app.use(rateLimiter);
 
 // --- Health check ---
 app.get('/health', (_req: Request, res: Response) => {
@@ -20,9 +25,16 @@ app.get('/health', (_req: Request, res: Response) => {
 app.post('/login', (req: Request, res: Response) => {
   const { username, password } = req.body ?? {};
 
-  // Demo credentials
-  if (username === 'admin' && password === 'password') {
-    const token = jwt.sign({ sub: username, role: 'user' }, JWT_SECRET, {
+  // Demo user store (in production: hashed passwords in a database)
+  const users: Record<string, { password: string; role: string }> = {
+    admin: { password: 'password', role: 'admin' },
+    user: { password: 'password', role: 'user' },
+  };
+
+  const account = users[username];
+
+  if (account && account.password === password) {
+    const token = jwt.sign({ sub: username, role: account.role }, JWT_SECRET, {
       expiresIn: '1h',
     });
     return res.json({ token });
@@ -68,6 +80,24 @@ app.post('/orders', authenticate, async (req: Request, res: Response) => {
     res.status(502).json({ error: 'order service unavailable' });
   }
 });
+
+// Admin-only endpoint — requires a valid JWT AND the "admin" role
+app.get(
+  '/admin/stats',
+  authenticate,
+  requireRole('admin'),
+  (req: Request, res: Response) => {
+    const user = (req as any).user;
+    res.json({
+      message: 'Welcome to the admin dashboard',
+      accessed_by: user.sub,
+      role: user.role,
+      stats: {
+        note: 'This is protected admin-only data',
+      },
+    });
+  },
+);
 
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);
