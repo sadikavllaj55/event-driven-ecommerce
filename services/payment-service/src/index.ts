@@ -3,6 +3,7 @@ import {
   ROUTING_KEY_PAYMENT_SUCCEEDED,
   ROUTING_KEY_PAYMENT_FAILED,
 } from './rabbitmq.ts';
+import { calculateAmount, isPaymentApproved } from './payment_logic.ts';
 
 // Shape of the stock result event we receive
 interface StockResult {
@@ -39,10 +40,10 @@ async function main() {
       `Received stock.reserved for order ${event.order_id} (product ${event.product_id}, qty ${event.quantity})`,
     );
 
-    const amount = event.quantity * PRICE_PER_UNIT;
+    const amount = calculateAmount(event.quantity, PRICE_PER_UNIT);
 
-    // Simulate payment processing.
-    const success = amount <= PAYMENT_LIMIT;
+    // Decide payment outcome using our tested logic
+    const success = isPaymentApproved(amount, PAYMENT_LIMIT);
 
     const result: PaymentResult = {
       order_id: event.order_id,
