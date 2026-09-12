@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,12 +96,37 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Health check
+	// Health check (readiness) — verifies dependencies are reachable
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		checks := map[string]string{
+			"database": "ok",
+			"rabbitmq": "ok",
+		}
+		healthy := true
+
+		// Check database
+		if err := db.Ping(); err != nil {
+			checks["database"] = "unavailable"
+			healthy = false
+		}
+
+		// Check RabbitMQ
+		if !publisher.IsReady() {
+			checks["rabbitmq"] = "unavailable"
+			healthy = false
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":  "ok",
+		status := "ok"
+		if !healthy {
+			status = "degraded"
+			w.WriteHeader(http.StatusServiceUnavailable) // 503
+		}
+
+		json.NewEncoder(w).Encode(map[string]any{
+			"status":  status,
 			"service": "order-service",
+			"checks":  checks,
 		})
 	})
 
@@ -145,10 +174,34 @@ func main() {
 	})
 
 	port := ":" + cfg.Port
-	log.Printf("Order Service running on %s", port)
-
-	if err := http.ListenAndServe(port, mux); err != nil {
-		log.Fatal(err)
+	server := &http.Server{
+		Addr:    port,
+		Handler: mux,
 	}
 
+	// Start the server in a goroutine so it doesn't block
+	go func() {
+		log.Printf("Order Service running on %s", port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// Wait for a shutdown signal (Ctrl+C or container stop)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down gracefully...")
+
+	// Give in-flight requests up to 10 seconds to finish
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server stopped. Cleaning up...")
+	// db.Close() and publisher.Close() run via their defers
 }

@@ -99,6 +99,11 @@ func (p *Publisher) Close() {
 	}
 }
 
+// IsReady checks if the RabbitMQ connection is still open
+func (p *Publisher) IsReady() bool {
+	return p.conn != nil && !p.conn.IsClosed()
+}
+
 // ConsumeResults declares a queue for stock results, binds it, and consumes messages
 func (p *Publisher) ConsumeResults(handler func(routingKey string, body []byte)) error {
 	// Declare a queue to hold stock result events

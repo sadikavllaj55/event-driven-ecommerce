@@ -47,6 +47,11 @@ func (db *DB) UpdateOrderStatus(orderID, status string) error {
 	return err
 }
 
+// Ping checks if the database is reachable
+func (db *DB) Ping() error {
+	return db.pool.Ping(context.Background())
+}
+
 // Close shuts down the connection pool
 func (db *DB) Close() {
 	db.pool.Close()
