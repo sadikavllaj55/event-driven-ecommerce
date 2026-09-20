@@ -1,3 +1,30 @@
+-- ============================================
+-- Orders (Order Service)
+-- ============================================
+CREATE TABLE IF NOT EXISTS orders (
+    id UUID PRIMARY KEY,
+    product_id TEXT NOT NULL,
+    quantity INT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================
+-- Stock (Inventory Service)
+-- ============================================
+CREATE TABLE IF NOT EXISTS stock (
+    product_id TEXT PRIMARY KEY,
+    available INT NOT NULL
+);
+
+INSERT INTO stock (product_id, available) VALUES
+    ('prod-123', 10),
+    ('prod-456', 3)
+ON CONFLICT (product_id) DO NOTHING;
+
+-- ============================================
+-- Users (User Service)
+-- ============================================
 -- Role type: enforce valid roles at the DB level (idempotent)
 DO $$
 BEGIN
@@ -12,5 +39,19 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'buyer',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================
+-- Products (Product Service)
+-- ============================================
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY,
+    seller_id UUID NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    price_cents INT NOT NULL CHECK (price_cents >= 0),
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    image_url TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
