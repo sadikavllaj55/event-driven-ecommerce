@@ -1,17 +1,16 @@
-CREATE TABLE IF NOT EXISTS orders (
+-- Role type: enforce valid roles at the DB level (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE user_role AS ENUM ('buyer', 'seller', 'admin');
+    END IF;
+END$$;
+
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
-    product_id TEXT NOT NULL,
-    quantity INT NOT NULL,
-    status TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role user_role NOT NULL DEFAULT 'buyer',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-CREATE TABLE IF NOT EXISTS stock (
-    product_id TEXT PRIMARY KEY,
-    available INT NOT NULL
-);
-
-INSERT INTO stock (product_id, available) VALUES
-    ('prod-123', 10),
-    ('prod-456', 3)
-ON CONFLICT (product_id) DO NOTHING;

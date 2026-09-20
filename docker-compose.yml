@@ -91,6 +91,17 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  user-service:
+    build: ./services/user-service
+    container_name: ecommerce-user-service
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ecommerce
+      PORT: "8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
