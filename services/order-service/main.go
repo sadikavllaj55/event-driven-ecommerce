@@ -13,29 +13,43 @@ import (
 	"github.com/google/uuid"
 )
 
-// Order represents a customer order
+// OrderItem represents a single product line in an order
+type OrderItem struct {
+	ProductID  string `json:"product_id"`
+	Quantity   int    `json:"quantity"`
+	PriceCents int    `json:"price_cents"`
+	Status     string `json:"status,omitempty"`
+}
+
+// Order represents a customer order with one or more items
 type Order struct {
-	ID        string    `json:"id"`
-	ProductID string    `json:"product_id"`
-	Quantity  int       `json:"quantity"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         string      `json:"id"`
+	BuyerID    string      `json:"buyer_id"`
+	Status     string      `json:"status"`
+	TotalCents int         `json:"total_cents"`
+	Items      []OrderItem `json:"items"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+// CreateOrderItemRequest is a single item in a create-order request
+type CreateOrderItemRequest struct {
+	ProductID  string `json:"product_id"`
+	Quantity   int    `json:"quantity"`
+	PriceCents int    `json:"price_cents"`
 }
 
 // CreateOrderRequest is the expected request body
 type CreateOrderRequest struct {
-	ProductID string `json:"product_id"`
-	Quantity  int    `json:"quantity"`
+	BuyerID string                   `json:"buyer_id"`
+	Items   []CreateOrderItemRequest `json:"items"`
 }
 
-// StockResult mirrors the result published by the Inventory Service
-type StockResult struct {
-	OrderID   string `json:"order_id"`
-	ProductID string `json:"product_id"`
-	Quantity  int    `json:"quantity"`
-	Reserved  bool   `json:"reserved"`
-	Amount    int    `json:"amount,omitempty"`
-	Reason    string `json:"reason,omitempty"`
+// SagaResult mirrors the result published by Inventory/Payment services
+type SagaResult struct {
+	OrderID string `json:"order_id"`
+	Success bool   `json:"success"`
+	Amount  int    `json:"amount,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 func main() {
@@ -56,24 +70,22 @@ func main() {
 	}
 	defer db.Close()
 
-	// Start listening for stock results from the Inventory Service
+	// Start listening for saga results from Inventory / Payment services
 	err = publisher.ConsumeResults(func(routingKey string, body []byte) {
-		var result StockResult
+		var result SagaResult
 		if err := json.Unmarshal(body, &result); err != nil {
-			log.Printf("Failed to parse stock result: %v", err)
+			log.Printf("Failed to parse saga result: %v", err)
 			return
 		}
 
 		switch routingKey {
 		case routingKeyReserved:
-			log.Printf("Order %s - stock reserved (product %s, qty %d)",
-				result.OrderID, result.ProductID, result.Quantity)
+			log.Printf("Order %s - all stock reserved", result.OrderID)
 			if err := db.UpdateOrderStatus(result.OrderID, "stock_reserved"); err != nil {
 				log.Printf("Failed to update order status: %v", err)
 			}
 		case routingKeyFailed:
-			log.Printf("Order %s FAILED - %s (product %s, qty %d)",
-				result.OrderID, result.Reason, result.ProductID, result.Quantity)
+			log.Printf("Order %s FAILED - %s", result.OrderID, result.Reason)
 			if err := db.UpdateOrderStatus(result.OrderID, "failed"); err != nil {
 				log.Printf("Failed to update order status: %v", err)
 			}
@@ -88,7 +100,6 @@ func main() {
 				log.Printf("Failed to update order status: %v", err)
 			}
 		}
-
 	})
 	if err != nil {
 		log.Fatalf("Failed to start result consumer: %v", err)
@@ -138,21 +149,40 @@ func main() {
 			return
 		}
 
-		// Basic validation
-		if req.ProductID == "" || req.Quantity <= 0 {
-			http.Error(w, "product_id and quantity (>0) are required", http.StatusBadRequest)
+		// Validation: must have at least one item
+		if len(req.Items) == 0 {
+			http.Error(w, "order must contain at least one item", http.StatusBadRequest)
 			return
 		}
 
-		order := Order{
-			ID:        uuid.NewString(),
-			ProductID: req.ProductID,
-			Quantity:  req.Quantity,
-			Status:    "pending",
-			CreatedAt: time.Now().UTC(),
+		// Build the order items and compute the total
+		items := make([]OrderItem, 0, len(req.Items))
+		total := 0
+		for _, it := range req.Items {
+			if it.ProductID == "" || it.Quantity <= 0 {
+				http.Error(w, "each item needs product_id and quantity (>0)", http.StatusBadRequest)
+				return
+			}
+			items = append(items, OrderItem{
+				ProductID:  it.ProductID,
+				Quantity:   it.Quantity,
+				PriceCents: it.PriceCents,
+				Status:     "pending",
+			})
+			total += it.PriceCents * it.Quantity
 		}
 
-		log.Printf("Created order: %+v", order)
+		order := Order{
+			ID:         uuid.NewString(),
+			BuyerID:    req.BuyerID,
+			Status:     "pending",
+			TotalCents: total,
+			Items:      items,
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		log.Printf("Created order %s with %d item(s), total %d cents",
+			order.ID, len(order.Items), order.TotalCents)
 
 		// Save the order to the database
 		if err := db.SaveOrder(order); err != nil {

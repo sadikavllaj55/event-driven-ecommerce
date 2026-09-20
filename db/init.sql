@@ -3,11 +3,21 @@
 -- ============================================
 CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY,
-    product_id TEXT NOT NULL,
-    quantity INT NOT NULL,
+    buyer_id UUID,
     status TEXT NOT NULL,
+    total_cents INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price_cents INT NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending'
+);
+
 
 -- ============================================
 -- Stock (Inventory Service)

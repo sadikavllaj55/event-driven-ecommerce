@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,14 +29,47 @@ func NewDB(connString string) (*DB, error) {
 	return &DB{pool: pool}, nil
 }
 
-// SaveOrder inserts a new order into the database
+// SaveOrder inserts a new order and all its items in a single transaction
 func (db *DB) SaveOrder(order Order) error {
-	_, err := db.pool.Exec(context.Background(),
-		`INSERT INTO orders (id, product_id, quantity, status, created_at)
+	ctx := context.Background()
+
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) // rolls back if we don't commit
+
+	// Insert the order
+	_, err = tx.Exec(ctx,
+		`INSERT INTO orders (id, buyer_id, status, total_cents, created_at)
 		 VALUES ($1, $2, $3, $4, $5)`,
-		order.ID, order.ProductID, order.Quantity, order.Status, order.CreatedAt,
+		order.ID, nullIfEmpty(order.BuyerID), order.Status, order.TotalCents, order.CreatedAt,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Insert each item
+	for _, item := range order.Items {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO order_items (id, order_id, product_id, quantity, price_cents, status)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			uuid.NewString(), order.ID, item.ProductID, item.Quantity, item.PriceCents, item.Status,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// nullIfEmpty returns nil for empty strings (so buyer_id can be NULL)
+func nullIfEmpty(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 // UpdateOrderStatus updates the status of an existing order

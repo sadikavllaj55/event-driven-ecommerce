@@ -32,54 +32,81 @@ func NewDB(connString string) (*DB, error) {
 	return &DB{pool: pool}, nil
 }
 
-// ReserveStock atomically reserves stock for a product.
-// Returns the remaining quantity, or ErrInsufficientStock if not enough.
-func (db *DB) ReserveStock(productID string, quantity int) (int, error) {
+// Item represents a product + quantity to reserve/restore
+type Item struct {
+	ProductID string
+	Quantity  int
+}
+
+// ReserveItems atomically reserves stock for MULTIPLE items (all-or-nothing).
+// If any item has insufficient stock, the entire transaction rolls back
+// and ErrInsufficientStock is returned.
+func (db *DB) ReserveItems(items []Item) error {
 	ctx := context.Background()
 
-	// Start a transaction so the check + update are atomic
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	defer tx.Rollback(ctx) // rolls back if we don't commit
+	defer tx.Rollback(ctx) // rolls back automatically unless we commit
 
-	// Lock the row and read current stock
-	var available int
-	err = tx.QueryRow(ctx,
-		`SELECT available FROM stock WHERE product_id = $1 FOR UPDATE`,
-		productID,
-	).Scan(&available)
+	for _, item := range items {
+		// Lock the row and read current stock
+		var available int
+		err = tx.QueryRow(ctx,
+			`SELECT available FROM stock WHERE product_id = $1 FOR UPDATE`,
+			item.ProductID,
+		).Scan(&available)
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrInsufficientStock // unknown product = treat as no stock
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInsufficientStock // unknown product = no stock
+		}
+		if err != nil {
+			return err
+		}
+
+		// Check if we can reserve this item
+		if !CanReserve(available, item.Quantity) {
+			// Not enough for this item -> whole transaction rolls back (defer)
+			return ErrInsufficientStock
+		}
+
+		// Decrement
+		remaining := RemainingAfterReserve(available, item.Quantity)
+		_, err = tx.Exec(ctx,
+			`UPDATE stock SET available = $1 WHERE product_id = $2`,
+			remaining, item.ProductID,
+		)
+		if err != nil {
+			return err
+		}
 	}
+
+	// All items reserved successfully -> commit everything at once
+	return tx.Commit(ctx)
+}
+
+// RestoreItems adds stock back for multiple items (compensating action)
+func (db *DB) RestoreItems(items []Item) error {
+	ctx := context.Background()
+
+	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, item := range items {
+		_, err = tx.Exec(ctx,
+			`UPDATE stock SET available = available + $1 WHERE product_id = $2`,
+			item.Quantity, item.ProductID,
+		)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Not enough stock (uses the same logic covered by unit tests)
-	if !CanReserve(available, quantity) {
-		return available, ErrInsufficientStock
-	}
-
-	// Decrement and save
-	remaining := RemainingAfterReserve(available, quantity)
-
-	_, err = tx.Exec(ctx,
-		`UPDATE stock SET available = $1 WHERE product_id = $2`,
-		remaining, productID,
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	// Commit the transaction
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-
-	return remaining, nil
+	return tx.Commit(ctx)
 }
 
 // RestoreStock adds units back to a product's stock (compensating action)
