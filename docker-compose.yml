@@ -113,7 +113,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      
+    
+  redis:
+    image: redis:7-alpine
+    container_name: ecommerce-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cart-service:
+    build: ./services/cart-service
+    container_name: ecommerce-cart-service
+    ports:
+      - "8084:8084"
+    environment:
+      REDIS_URL: redis:6379
+      ORDER_SERVICE_URL: http://order-service:8081
+      PORT: "8084"
+    depends_on:
+      redis:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+
 
 volumes:
   postgres_data:
