@@ -41,8 +41,15 @@ services:
       PORT: "8080"
       JWT_SECRET: dev-secret-change-me
       ORDER_SERVICE_URL: http://order-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      PRODUCT_SERVICE_URL: http://product-service:8083
+      CART_SERVICE_URL: http://cart-service:8084
+
     depends_on:
       - order-service
+      - user-service
+      - product-service
+      - cart-service
 
   order-service:
     build: ./services/order-service

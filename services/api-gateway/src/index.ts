@@ -10,6 +10,12 @@ const PORT = process.env.PORT ?? '8080';
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
 const ORDER_SERVICE_URL =
   process.env.ORDER_SERVICE_URL ?? 'http://localhost:8081';
+const USER_SERVICE_URL =
+  process.env.USER_SERVICE_URL ?? 'http://localhost:8082';
+const PRODUCT_SERVICE_URL =
+  process.env.PRODUCT_SERVICE_URL ?? 'http://localhost:8083';
+const CART_SERVICE_URL =
+  process.env.CART_SERVICE_URL ?? 'http://localhost:8084';
 
 const app = express();
 app.use(helmet());
@@ -24,25 +30,41 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // --- Login: issues a JWT token ---
 // (In a real system you'd verify credentials against a user store.)
-app.post('/login', (req: Request, res: Response) => {
-  const { username, password } = req.body ?? {};
+app.post('/login', async (req: Request, res: Response) => {
+  const { email, password } = req.body ?? {};
 
-  // Demo user store (in production: hashed passwords in a database)
-  const users: Record<string, { password: string; role: string }> = {
-    admin: { password: 'password', role: 'admin' },
-    user: { password: 'password', role: 'user' },
-  };
-
-  const account = users[username];
-
-  if (account && account.password === password) {
-    const token = jwt.sign({ sub: username, role: account.role }, JWT_SECRET, {
-      expiresIn: '1h',
-    });
-    return res.json({ token });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required' });
   }
 
-  return res.status(401).json({ error: 'invalid credentials' });
+  try {
+    // Ask the User Service to verify the credentials
+    const response = await fetch(`${USER_SERVICE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+
+    const user = await response.json();
+
+    // Issue a JWT with the real user's id and role
+    const token = jwt.sign(
+      { sub: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '1h' },
+    );
+
+    return res.json({ token });
+  } catch (err) {
+    console.error('Login failed calling user service:', err);
+    return res
+      .status(502)
+      .json({ error: 'authentication service unavailable' });
+  }
 });
 
 // --- Auth middleware: verifies the JWT ---
@@ -100,6 +122,82 @@ app.get(
     });
   },
 );
+
+// ---------- PUBLIC routes ----------
+
+// Register a new user (public)
+app.post('/register', (req, res) => {
+  proxy(req, res, USER_SERVICE_URL, '/register');
+});
+
+// Browse products (public)
+app.get('/products', (req, res) => {
+  proxy(req, res, PRODUCT_SERVICE_URL, '/products');
+});
+app.get('/products/:id', (req, res) => {
+  proxy(req, res, PRODUCT_SERVICE_URL, `/products/${req.params.id}`);
+});
+
+// ---------- PROTECTED routes (require JWT) ----------
+
+// Create a product (authenticated — sellers)
+app.post('/products', authenticate, (req, res) => {
+  // Inject the seller_id from the verified token (users can't fake it!)
+  req.body.seller_id = (req as any).user.sub;
+  proxy(req, res, PRODUCT_SERVICE_URL, '/products');
+});
+
+// Cart operations (authenticated — the buyer is from the token)
+app.get('/cart', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(req, res, CART_SERVICE_URL, `/cart/${buyerId}`);
+});
+app.post('/cart/items', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(req, res, CART_SERVICE_URL, `/cart/${buyerId}/items`);
+});
+app.delete('/cart/items/:productId', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(
+    req,
+    res,
+    CART_SERVICE_URL,
+    `/cart/${buyerId}/items/${req.params.productId}`,
+  );
+});
+app.post('/cart/checkout', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(req, res, CART_SERVICE_URL, `/cart/${buyerId}/checkout`);
+});
+
+// Forwards a request to a target service and returns the response to the client
+async function proxy(
+  req: Request,
+  res: Response,
+  targetBaseUrl: string,
+  targetPath: string,
+) {
+  try {
+    const hasBody = req.method !== 'GET' && req.method !== 'DELETE';
+    const response = await fetch(`${targetBaseUrl}${targetPath}`, {
+      method: req.method,
+      headers: { 'Content-Type': 'application/json' },
+      body: hasBody ? JSON.stringify(req.body) : undefined,
+    });
+
+    const data = await response.text();
+    res
+      .status(response.status)
+      .set(
+        'Content-Type',
+        response.headers.get('Content-Type') ?? 'application/json',
+      )
+      .send(data);
+  } catch (err) {
+    console.error(`Proxy error to ${targetBaseUrl}${targetPath}:`, err);
+    res.status(502).json({ error: 'upstream service unavailable' });
+  }
+}
 
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);
