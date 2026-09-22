@@ -49,8 +49,11 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'buyer',
+    verified BOOLEAN NOT NULL DEFAULT false,
+    verification_token TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
 
 -- ============================================
 -- Products (Product Service)

@@ -9,8 +9,9 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	DBURL string
-	Port  string
+	DBURL     string
+	RabbitURL string
+	Port      string
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables
@@ -20,8 +21,9 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		DBURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
-		Port:  getEnv("PORT", "8082"),
+		DBURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
+		RabbitURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		Port:      getEnv("PORT", "8082"),
 	}
 }
 

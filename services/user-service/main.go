@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // --- Request/response types ---
@@ -30,6 +32,12 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+
+	publisher, err := NewPublisher(cfg.RabbitURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer publisher.Close()
 
 	mux := http.NewServeMux()
 
@@ -71,14 +79,18 @@ func main() {
 		}
 
 		// Hash the password
+		// Hash the password
 		hash, err := HashPassword(req.Password)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to process password")
 			return
 		}
 
-		// Create the user
-		user, err := db.CreateUser(req.Email, hash, req.Name, role)
+		// Generate a verification token
+		verificationToken := uuid.NewString()
+
+		// Create the user (unverified)
+		user, err := db.CreateUser(req.Email, hash, req.Name, role, verificationToken)
 		if err != nil {
 			if errors.Is(err, ErrEmailExists) {
 				writeError(w, http.StatusConflict, "email already registered")
@@ -89,7 +101,18 @@ func main() {
 			return
 		}
 
-		log.Printf("Registered user: %s (%s)", user.Email, user.Role)
+		// Publish user.registered event (Notification Service sends the email)
+		if err := publisher.PublishUserRegistered(UserRegisteredEvent{
+			UserID:            user.ID,
+			Email:             user.Email,
+			Name:              user.Name,
+			VerificationToken: verificationToken,
+		}); err != nil {
+			log.Printf("Warning: failed to publish user.registered: %v", err)
+			// Don't fail registration if the event fails — user is still created
+		}
+
+		log.Printf("Registered user: %s (%s) - verification pending", user.Email, user.Role)
 		writeJSON(w, http.StatusCreated, user)
 	})
 
@@ -117,6 +140,29 @@ func main() {
 
 		log.Printf("User logged in: %s", user.Email)
 		writeJSON(w, http.StatusOK, user)
+	})
+
+	// Verify email — user clicks the link from their email
+	mux.HandleFunc("GET /verify", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			writeError(w, http.StatusBadRequest, "token is required")
+			return
+		}
+
+		if err := db.VerifyUser(token); err != nil {
+			if errors.Is(err, ErrUserNotFound) {
+				writeError(w, http.StatusNotFound, "invalid or expired verification token")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to verify")
+			return
+		}
+
+		log.Printf("User verified with token %s", token)
+		writeJSON(w, http.StatusOK, map[string]string{
+			"message": "email verified successfully — you can now log in",
+		})
 	})
 
 	// Get profile by ID

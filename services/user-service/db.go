@@ -47,7 +47,7 @@ func NewDB(connString string) (*DB, error) {
 }
 
 // CreateUser inserts a new user. Returns ErrEmailExists if the email is taken.
-func (db *DB) CreateUser(email, passwordHash, name, role string) (*User, error) {
+func (db *DB) CreateUser(email, passwordHash, name, role, verificationToken string) (*User, error) {
 	user := &User{
 		ID:           uuid.NewString(),
 		Email:        email,
@@ -58,12 +58,11 @@ func (db *DB) CreateUser(email, passwordHash, name, role string) (*User, error) 
 	}
 
 	_, err := db.pool.Exec(context.Background(),
-		`INSERT INTO users (id, email, password_hash, name, role, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		user.ID, user.Email, user.PasswordHash, user.Name, user.Role, user.CreatedAt,
+		`INSERT INTO users (id, email, password_hash, name, role, verified, verification_token, created_at)
+		 VALUES ($1, $2, $3, $4, $5, false, $6, $7)`,
+		user.ID, user.Email, user.PasswordHash, user.Name, user.Role, verificationToken, user.CreatedAt,
 	)
 	if err != nil {
-		// Postgres unique_violation error code is 23505
 		if isUniqueViolation(err) {
 			return nil, ErrEmailExists
 		}
@@ -107,6 +106,23 @@ func (db *DB) GetUserByID(id string) (*User, error) {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// VerifyUser marks a user as verified if the token matches.
+// Returns ErrUserNotFound if no user has that token.
+func (db *DB) VerifyUser(token string) error {
+	tag, err := db.pool.Exec(context.Background(),
+		`UPDATE users SET verified = true, verification_token = NULL
+		 WHERE verification_token = $1`,
+		token,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
 }
 
 // Close shuts down the connection pool

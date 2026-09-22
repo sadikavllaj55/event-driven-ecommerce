@@ -3,6 +3,7 @@ import {
   ROUTING_KEY_PAYMENT_SUCCEEDED,
   ROUTING_KEY_PAYMENT_FAILED,
   ROUTING_KEY_STOCK_FAILED,
+  ROUTING_KEY_USER_REGISTERED,
 } from './rabbitmq.ts';
 
 const RABBIT_URL =
@@ -11,6 +12,19 @@ const RABBIT_URL =
 // Simulate sending a notification (email/SMS/push)
 function sendNotification(orderId: string, message: string): void {
   console.log(`📬 [NOTIFICATION] Order ${orderId}: ${message}`);
+}
+
+// Simulate sending a verification email
+function sendVerificationEmail(event: any): void {
+  const verifyUrl = `http://localhost:8082/verify?token=${event.verification_token}`;
+  console.log('');
+  console.log('📧 =============== VERIFICATION EMAIL ===============');
+  console.log(`   To: ${event.email}`);
+  console.log(`   Subject: Confirm your email`);
+  console.log(`   Hi ${event.name}, please confirm your email:`);
+  console.log(`   👉 ${verifyUrl}`);
+  console.log('   ==================================================');
+  console.log('');
 }
 
 async function main() {
@@ -38,6 +52,10 @@ async function main() {
           event.order_id,
           `Sorry, the item is out of stock. Your order could not be completed. ❌`,
         );
+        break;
+
+      case ROUTING_KEY_USER_REGISTERED:
+        sendVerificationEmail(event);
         break;
 
       default:

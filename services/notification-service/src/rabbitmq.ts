@@ -8,6 +8,7 @@ const QUEUE_NAME = 'notification.events';
 export const ROUTING_KEY_PAYMENT_SUCCEEDED = 'payment.succeeded';
 export const ROUTING_KEY_PAYMENT_FAILED = 'payment.failed';
 export const ROUTING_KEY_STOCK_FAILED = 'stock.failed';
+export const ROUTING_KEY_USER_REGISTERED = 'user.registered';
 
 export class RabbitMQ {
   private connection!: ChannelModel;
@@ -29,6 +30,7 @@ export class RabbitMQ {
       ROUTING_KEY_PAYMENT_SUCCEEDED,
       ROUTING_KEY_PAYMENT_FAILED,
       ROUTING_KEY_STOCK_FAILED,
+      ROUTING_KEY_USER_REGISTERED,
     ];
 
     for (const key of keys) {
