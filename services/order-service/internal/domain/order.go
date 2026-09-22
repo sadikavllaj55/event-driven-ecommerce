@@ -33,8 +33,10 @@ type SagaResult struct {
 
 // Domain errors
 var (
-	ErrNoItems     = errors.New("order must contain at least one item")
-	ErrInvalidItem = errors.New("each item needs product_id and quantity (>0)")
+	ErrNoItems       = errors.New("order must contain at least one item")
+	ErrInvalidItem   = errors.New("each item needs product_id and quantity (>0)")
+	ErrOrderNotFound = errors.New("order not found")
+	ErrForbidden     = errors.New("not allowed to access this order")
 )
 
 // Order status values

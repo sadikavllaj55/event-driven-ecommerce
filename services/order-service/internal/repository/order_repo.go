@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"order-service/internal/domain"
@@ -14,6 +16,8 @@ import (
 type OrderRepository interface {
 	SaveOrder(ctx context.Context, order domain.Order) error
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
+	GetOrdersByBuyer(ctx context.Context, buyerID string) ([]domain.Order, error)
+	GetOrderByID(ctx context.Context, orderID string) (*domain.Order, error)
 }
 
 // PostgresOrderRepository is the concrete Postgres implementation
@@ -72,4 +76,88 @@ func nullIfEmpty(s string) any {
 		return nil
 	}
 	return s
+}
+
+// GetOrdersByBuyer returns all orders for a buyer, each with its items
+func (r *PostgresOrderRepository) GetOrdersByBuyer(ctx context.Context, buyerID string) ([]domain.Order, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, buyer_id, status, total_cents, created_at
+		 FROM orders WHERE buyer_id = $1 ORDER BY created_at DESC`,
+		buyerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := []domain.Order{}
+	for rows.Next() {
+		var o domain.Order
+		if err := rows.Scan(&o.ID, &o.BuyerID, &o.Status, &o.TotalCents, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Load items for each order
+	for i := range orders {
+		items, err := r.getItems(ctx, orders[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		orders[i].Items = items
+	}
+
+	return orders, nil
+}
+
+// GetOrderByID returns a single order with its items
+func (r *PostgresOrderRepository) GetOrderByID(ctx context.Context, orderID string) (*domain.Order, error) {
+	var o domain.Order
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, buyer_id, status, total_cents, created_at
+		 FROM orders WHERE id = $1`,
+		orderID,
+	).Scan(&o.ID, &o.BuyerID, &o.Status, &o.TotalCents, &o.CreatedAt)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.ErrOrderNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := r.getItems(ctx, o.ID)
+	if err != nil {
+		return nil, err
+	}
+	o.Items = items
+
+	return &o, nil
+}
+
+// getItems loads all items for an order
+func (r *PostgresOrderRepository) getItems(ctx context.Context, orderID string) ([]domain.OrderItem, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT product_id, quantity, price_cents, status
+		 FROM order_items WHERE order_id = $1`,
+		orderID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []domain.OrderItem{}
+	for rows.Next() {
+		var it domain.OrderItem
+		if err := rows.Scan(&it.ProductID, &it.Quantity, &it.PriceCents, &it.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, it)
+	}
+	return items, rows.Err()
 }

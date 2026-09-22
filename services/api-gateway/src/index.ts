@@ -91,6 +91,9 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
 // --- Protected: forward order creation to the Order Service ---
 app.post('/orders', authenticate, async (req: Request, res: Response) => {
   try {
+    // Inject buyer_id from the verified token (not trusted from the body)
+    req.body.buyer_id = (req as any).user.sub;
+
     const response = await fetch(`${ORDER_SERVICE_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -170,18 +173,32 @@ app.post('/cart/checkout', authenticate, (req, res) => {
   proxy(req, res, CART_SERVICE_URL, `/cart/${buyerId}/checkout`);
 });
 
+// Order history (authenticated — buyer identity from the token)
+app.get('/orders', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(req, res, ORDER_SERVICE_URL, '/orders', { 'X-User-ID': buyerId });
+});
+
+app.get('/orders/:id', authenticate, (req, res) => {
+  const buyerId = (req as any).user.sub;
+  proxy(req, res, ORDER_SERVICE_URL, `/orders/${req.params.id}`, {
+    'X-User-ID': buyerId,
+  });
+});
+
 // Forwards a request to a target service and returns the response to the client
 async function proxy(
   req: Request,
   res: Response,
   targetBaseUrl: string,
   targetPath: string,
+  extraHeaders: Record<string, string> = {},
 ) {
   try {
     const hasBody = req.method !== 'GET' && req.method !== 'DELETE';
     const response = await fetch(`${targetBaseUrl}${targetPath}`, {
       method: req.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
       body: hasBody ? JSON.stringify(req.body) : undefined,
     });
 

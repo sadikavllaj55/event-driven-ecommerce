@@ -94,3 +94,24 @@ func (s *OrderService) HandleSagaResult(ctx context.Context, routingKey string, 
 	}
 	return s.repo.UpdateOrderStatus(ctx, result.OrderID, status)
 }
+
+// ListBuyerOrders returns all orders belonging to a buyer
+func (s *OrderService) ListBuyerOrders(ctx context.Context, buyerID string) ([]domain.Order, error) {
+	return s.repo.GetOrdersByBuyer(ctx, buyerID)
+}
+
+// GetOrder returns a single order, but ONLY if it belongs to the requesting buyer.
+// This enforces ownership — a buyer cannot view another buyer's order.
+func (s *OrderService) GetOrder(ctx context.Context, orderID, buyerID string) (*domain.Order, error) {
+	order, err := s.repo.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, err // may be ErrOrderNotFound
+	}
+
+	// Ownership check
+	if order.BuyerID != buyerID {
+		return nil, domain.ErrForbidden
+	}
+
+	return order, nil
+}

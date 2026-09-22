@@ -38,6 +38,8 @@ type createOrderRequest struct {
 func (h *OrderHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("POST /orders", h.createOrder)
+	mux.HandleFunc("GET /orders", h.listOrders)
+	mux.HandleFunc("GET /orders/{id}", h.getOrder)
 }
 
 func (h *OrderHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +83,49 @@ func (h *OrderHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Created order %s with %d item(s), total %d cents",
 		order.ID, len(order.Items), order.TotalCents)
 	writeJSON(w, http.StatusCreated, order)
+}
+
+func (h *OrderHandler) listOrders(w http.ResponseWriter, r *http.Request) {
+	// The gateway sets this header from the verified JWT
+	buyerID := r.Header.Get("X-User-ID")
+	if buyerID == "" {
+		writeError(w, http.StatusBadRequest, "missing buyer identity")
+		return
+	}
+
+	orders, err := h.svc.ListBuyerOrders(r.Context(), buyerID)
+	if err != nil {
+		log.Printf("Failed to list orders: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to list orders")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, orders)
+}
+
+func (h *OrderHandler) getOrder(w http.ResponseWriter, r *http.Request) {
+	buyerID := r.Header.Get("X-User-ID")
+	if buyerID == "" {
+		writeError(w, http.StatusBadRequest, "missing buyer identity")
+		return
+	}
+	orderID := r.PathValue("id")
+
+	order, err := h.svc.GetOrder(r.Context(), orderID, buyerID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrOrderNotFound):
+			writeError(w, http.StatusNotFound, "order not found")
+		case errors.Is(err, domain.ErrForbidden):
+			writeError(w, http.StatusForbidden, "not allowed to access this order")
+		default:
+			log.Printf("Failed to get order: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to get order")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, order)
 }
 
 // --- HTTP helpers ---
