@@ -52,7 +52,15 @@ func NewPublisher(url string) (*Publisher, error) {
 }
 
 // PublishUserRegistered publishes a user.registered event
-func (p *Publisher) PublishUserRegistered(event UserRegisteredEvent) error {
+// PublishUserRegistered publishes a user.registered event
+func (p *Publisher) PublishUserRegistered(userID, email, name, verificationToken string) error {
+	event := UserRegisteredEvent{
+		UserID:            userID,
+		Email:             email,
+		Name:              name,
+		VerificationToken: verificationToken,
+	}
+
 	body, err := json.Marshal(event)
 	if err != nil {
 		return err
