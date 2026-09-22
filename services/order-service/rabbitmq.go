@@ -7,6 +7,8 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+
+	"order-service/internal/domain"
 )
 
 const (
@@ -60,7 +62,7 @@ func NewPublisher(url string) (*Publisher, error) {
 }
 
 // PublishOrderCreated publishes an order.created event
-func (p *Publisher) PublishOrderCreated(order Order) error {
+func (p *Publisher) PublishOrderCreated(order domain.Order) error {
 	body, err := json.Marshal(order)
 	if err != nil {
 		return err
