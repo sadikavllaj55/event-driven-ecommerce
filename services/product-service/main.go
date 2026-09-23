@@ -46,7 +46,13 @@ func main() {
 
 	// --- Wire the layers (dependency injection) ---
 	repo := repository.NewPostgresProductRepository(pool)
-	productSvc := service.NewProductService(repo, publisher, storage)
+	search, err := NewSearch([]string{cfg.ElasticURL})
+	if err != nil {
+		log.Fatalf("Failed to connect to Elasticsearch: %v", err)
+	}
+
+	productSvc := service.NewProductService(repo, publisher, storage, search)
+
 	productHandler := handler.NewProductHandler(productSvc)
 
 	// --- HTTP server ---

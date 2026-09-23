@@ -22,14 +22,20 @@ type ImageStorage interface {
 	UploadImage(objectName string, reader io.Reader, size int64, contentType string) (string, error)
 }
 
+type ProductSearch interface {
+	IndexProduct(p domain.Product) error
+	SearchProducts(query string) ([]map[string]any, error)
+}
+
 type ProductService struct {
 	repo      repository.ProductRepository
 	publisher EventPublisher
 	storage   ImageStorage
+	search    ProductSearch
 }
 
-func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage) *ProductService {
-	return &ProductService{repo: repo, publisher: publisher, storage: storage}
+func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage, search ProductSearch) *ProductService {
+	return &ProductService{repo: repo, publisher: publisher, storage: storage, search: search}
 }
 
 // CreateInput is the business input for creating a product.
@@ -71,6 +77,11 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 	// Best-effort: product creation still succeeds if the event fails.
 	if err := s.publisher.PublishProductCreated(created.ID, created.Stock); err != nil {
 		// A real system would use an outbox pattern for guaranteed delivery.
+		_ = err
+	}
+
+	// Index in Elasticsearch for search (best-effort)
+	if err := s.search.IndexProduct(*created); err != nil {
 		_ = err
 	}
 
@@ -204,4 +215,9 @@ func (s *ProductService) DeleteProductImage(ctx context.Context, imageID, produc
 		return domain.ErrProductNotFound
 	}
 	return s.repo.DeleteImage(ctx, imageID, productID)
+}
+
+// Search runs a full-text product search via Elasticsearch
+func (s *ProductService) Search(ctx context.Context, query string) ([]map[string]any, error) {
+	return s.search.SearchProducts(query)
 }

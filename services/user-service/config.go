@@ -9,9 +9,10 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	DBURL     string
-	RabbitURL string
-	Port      string
+	DBURL      string
+	RabbitURL  string
+	Port       string
+	ElasticURL string
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables

@@ -34,6 +34,7 @@ type productRequest struct {
 func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("GET /products", h.list)
+	mux.HandleFunc("GET /products/search", h.search)
 	mux.HandleFunc("GET /products/{id}", h.get)
 	mux.HandleFunc("POST /products", h.create)
 	mux.HandleFunc("PUT /products/{id}", h.update)
@@ -46,6 +47,19 @@ func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *ProductHandler) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "product-service"})
+}
+
+func (h *ProductHandler) search(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+
+	results, err := h.svc.Search(r.Context(), query)
+	if err != nil {
+		log.Printf("Search failed: %v", err)
+		writeError(w, http.StatusInternalServerError, "search failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, results)
 }
 
 func (h *ProductHandler) list(w http.ResponseWriter, r *http.Request) {

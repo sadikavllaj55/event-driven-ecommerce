@@ -151,6 +151,7 @@ app.post('/login/2fa', express.json(), async (req: Request, res: Response) => {
 
 // ---------- PUBLIC routes ----------
 app.post('/register', gateway(USER_SERVICE_URL));
+app.get('/products/search', gateway(PRODUCT_SERVICE_URL));
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 

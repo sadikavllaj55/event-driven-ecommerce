@@ -12,10 +12,11 @@ type Config struct {
 	DBURL           string
 	RabbitURL       string
 	Port            string
-	MinioEndpoint   string // how the service reaches MinIO (e.g. minio:9000)
+	MinioEndpoint   string
 	MinioAccessKey  string
 	MinioSecretKey  string
-	MinioPublicHost string // how browsers reach MinIO (e.g. localhost:9000)
+	MinioPublicHost string
+	ElasticURL      string
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables
@@ -25,6 +26,7 @@ func LoadConfig() Config {
 	}
 
 	return Config{
+		ElasticURL:      getEnv("ELASTIC_URL", "http://localhost:9200"),
 		DBURL:           getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
 		RabbitURL:       getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		Port:            getEnv("PORT", "8083"),
