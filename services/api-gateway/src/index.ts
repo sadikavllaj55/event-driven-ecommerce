@@ -128,6 +128,21 @@ app.delete(
   gateway(PRODUCT_SERVICE_URL),
 );
 
+// Product images
+app.get('/products/:id/images', gateway(PRODUCT_SERVICE_URL)); // public
+app.post(
+  '/products/:id/images',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.delete(
+  '/products/:id/images/:imageId',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+
 // Cart (buyer identity via X-User-ID)
 app.use('/cart', authenticate, injectUserId, gateway(CART_SERVICE_URL));
 

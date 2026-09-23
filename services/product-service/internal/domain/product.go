@@ -7,17 +7,26 @@ import (
 	"time"
 )
 
-// Product represents a product in the catalog
+// ProductImage is a single image belonging to a product
+type ProductImage struct {
+	ID        string    `json:"id"`
+	ProductID string    `json:"product_id"`
+	ImageURL  string    `json:"image_url"`
+	Position  int       `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Product struct {
-	ID          string    `json:"id"`
-	SellerID    string    `json:"seller_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	PriceCents  int       `json:"price_cents"`
-	Price       string    `json:"price"`
-	Stock       int       `json:"stock"`
-	ImageURL    string    `json:"image_url"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string         `json:"id"`
+	SellerID    string         `json:"seller_id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	PriceCents  int            `json:"price_cents"`
+	Price       string         `json:"price"`
+	Stock       int            `json:"stock"`
+	ImageURL    string         `json:"image_url"` // primary thumbnail
+	Images      []ProductImage `json:"images"`    // full gallery
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 // SetDisplayPrice populates the human-friendly Price field from PriceCents
@@ -27,9 +36,13 @@ func (p *Product) SetDisplayPrice() {
 
 // Domain errors
 var (
-	ErrProductNotFound = errors.New("product not found")
-	ErrInvalidInput    = errors.New("invalid product input")
+	ErrProductNotFound  = errors.New("product not found")
+	ErrInvalidInput     = errors.New("invalid product input")
+	ErrMaxImagesReached = errors.New("maximum images per product reached")
 )
+
+// MaxImagesPerProduct is the limit (Phase 1: hardcoded; Phase 2: admin-configurable)
+const MaxImagesPerProduct = 5
 
 // --- Money helpers (store cents internally, display dollars) ---
 

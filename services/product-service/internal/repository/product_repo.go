@@ -17,7 +17,15 @@ type ProductRepository interface {
 	List(ctx context.Context) ([]domain.Product, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
+	UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error)
 	Delete(ctx context.Context, id, sellerID string) error
+
+	// Image gallery
+	AddImage(ctx context.Context, productID, imageURL string) (*domain.ProductImage, error)
+	ListImages(ctx context.Context, productID string) ([]domain.ProductImage, error)
+	CountImages(ctx context.Context, productID string) (int, error)
+	DeleteImage(ctx context.Context, imageID, productID string) error
+	GetProductSeller(ctx context.Context, productID string) (string, error)
 }
 
 // PostgresProductRepository is the concrete Postgres implementation
@@ -83,6 +91,14 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*do
 	if err != nil {
 		return nil, err
 	}
+
+	// Load the product's image gallery
+	images, err := r.ListImages(ctx, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	p.Images = images
+
 	return &p, nil
 }
 
@@ -101,6 +117,21 @@ func (r *PostgresProductRepository) Update(ctx context.Context, p domain.Product
 		return nil, domain.ErrProductNotFound // doesn't exist or not owned
 	}
 	return r.GetByID(ctx, p.ID)
+}
+
+// UpdateImageURL sets a product's image URL, ONLY if it belongs to the seller
+func (r *PostgresProductRepository) UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE products SET image_url = $1 WHERE id = $2 AND seller_id = $3`,
+		imageURL, id, sellerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, domain.ErrProductNotFound // doesn't exist or not owned
+	}
+	return r.GetByID(ctx, id)
 }
 
 // Delete removes a product ONLY if it belongs to the given seller

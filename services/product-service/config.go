@@ -9,9 +9,13 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	DBURL     string
-	RabbitURL string
-	Port      string
+	DBURL           string
+	RabbitURL       string
+	Port            string
+	MinioEndpoint   string // how the service reaches MinIO (e.g. minio:9000)
+	MinioAccessKey  string
+	MinioSecretKey  string
+	MinioPublicHost string // how browsers reach MinIO (e.g. localhost:9000)
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables
@@ -21,9 +25,13 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		DBURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
-		RabbitURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		Port:      getEnv("PORT", "8083"),
+		DBURL:           getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
+		RabbitURL:       getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		Port:            getEnv("PORT", "8083"),
+		MinioEndpoint:   getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey:  getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinioSecretKey:  getEnv("MINIO_SECRET_KEY", "minioadmin"),
+		MinioPublicHost: getEnv("MINIO_PUBLIC_HOST", "localhost:9000"),
 	}
 }
 

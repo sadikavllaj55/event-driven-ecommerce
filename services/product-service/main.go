@@ -33,9 +33,20 @@ func main() {
 	}
 	defer publisher.Close()
 
+	// --- Infrastructure: MinIO object storage ---
+	storage, err := NewStorage(
+		cfg.MinioEndpoint,
+		cfg.MinioAccessKey,
+		cfg.MinioSecretKey,
+		cfg.MinioPublicHost,
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to MinIO: %v", err)
+	}
+
 	// --- Wire the layers (dependency injection) ---
 	repo := repository.NewPostgresProductRepository(pool)
-	productSvc := service.NewProductService(repo, publisher)
+	productSvc := service.NewProductService(repo, publisher, storage)
 	productHandler := handler.NewProductHandler(productSvc)
 
 	// --- HTTP server ---

@@ -2,7 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"product-service/internal/domain"
 	"product-service/internal/repository"
@@ -13,14 +17,19 @@ type EventPublisher interface {
 	PublishProductCreated(productID string, stock int) error
 }
 
-// ProductService holds the business logic for products
+// ImageStorage abstracts uploading images (so the service doesn't depend on MinIO directly)
+type ImageStorage interface {
+	UploadImage(objectName string, reader io.Reader, size int64, contentType string) (string, error)
+}
+
 type ProductService struct {
 	repo      repository.ProductRepository
 	publisher EventPublisher
+	storage   ImageStorage
 }
 
-func NewProductService(repo repository.ProductRepository, publisher EventPublisher) *ProductService {
-	return &ProductService{repo: repo, publisher: publisher}
+func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage) *ProductService {
+	return &ProductService{repo: repo, publisher: publisher, storage: storage}
 }
 
 // CreateInput is the business input for creating a product.
@@ -132,4 +141,67 @@ func (s *ProductService) Delete(ctx context.Context, id, sellerID string) error 
 		return domain.ErrInvalidInput
 	}
 	return s.repo.Delete(ctx, id, sellerID)
+}
+
+// SetImageURL updates a product's image URL (ownership enforced by the repo)
+func (s *ProductService) SetImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error) {
+	product, err := s.repo.UpdateImageURL(ctx, id, sellerID, imageURL)
+	if err != nil {
+		return nil, err
+	}
+	product.SetDisplayPrice()
+	return product, nil
+}
+
+// AddProductImage uploads an image for a product (ownership + max enforced).
+func (s *ProductService) AddProductImage(
+	ctx context.Context,
+	productID, sellerID, filename, contentType string,
+	reader io.Reader,
+	size int64,
+) (*domain.ProductImage, error) {
+	// Ownership check — only the product's seller can add images
+	owner, err := s.repo.GetProductSeller(ctx, productID)
+	if err != nil {
+		return nil, err // ErrProductNotFound if missing
+	}
+	if owner != sellerID {
+		return nil, domain.ErrProductNotFound // hide existence from non-owners
+	}
+
+	// Enforce the max images limit
+	count, err := s.repo.CountImages(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	if count >= domain.MaxImagesPerProduct {
+		return nil, domain.ErrMaxImagesReached
+	}
+
+	// Upload to storage (object name namespaced by product)
+	objectName := fmt.Sprintf("%s/%s-%s", productID, uuid.NewString(), filename)
+	url, err := s.storage.UploadImage(objectName, reader, size, contentType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save the image record
+	return s.repo.AddImage(ctx, productID, url)
+}
+
+// ListProductImages returns a product's image gallery
+func (s *ProductService) ListProductImages(ctx context.Context, productID string) ([]domain.ProductImage, error) {
+	return s.repo.ListImages(ctx, productID)
+}
+
+// DeleteProductImage removes an image (ownership enforced)
+func (s *ProductService) DeleteProductImage(ctx context.Context, imageID, productID, sellerID string) error {
+	owner, err := s.repo.GetProductSeller(ctx, productID)
+	if err != nil {
+		return err
+	}
+	if owner != sellerID {
+		return domain.ErrProductNotFound
+	}
+	return s.repo.DeleteImage(ctx, imageID, productID)
 }

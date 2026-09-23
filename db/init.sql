@@ -68,3 +68,15 @@ CREATE TABLE IF NOT EXISTS products (
     image_url TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+
+CREATE TABLE IF NOT EXISTS product_images (
+    id UUID PRIMARY KEY,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    image_url TEXT NOT NULL,
+    position INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id);
+
