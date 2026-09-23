@@ -107,14 +107,26 @@ app.post('/login', express.json(), async (req: Request, res: Response) => {
   }
 });
 
-// ---------- PUBLIC proxied routes ----------
+// ---------- PUBLIC routes ----------
 app.post('/register', gateway(USER_SERVICE_URL));
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 
-// ---------- PROTECTED proxied routes ----------
-// Products (seller — needs identity)
+// ---------- PROTECTED routes (require JWT) ----------
+// Products (seller — identity via X-User-ID)
 app.post('/products', authenticate, injectUserId, gateway(PRODUCT_SERVICE_URL));
+app.put(
+  '/products/:id',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.delete(
+  '/products/:id',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
 
 // Cart (buyer identity via X-User-ID)
 app.use('/cart', authenticate, injectUserId, gateway(CART_SERVICE_URL));
