@@ -14,6 +14,7 @@ import (
 type StockRepository interface {
 	ReserveItems(ctx context.Context, items []domain.Item) error
 	RestoreItems(ctx context.Context, items []domain.Item) error
+	UpsertStock(ctx context.Context, productID string, quantity int) error
 }
 
 // PostgresStockRepository is the concrete Postgres implementation
@@ -84,6 +85,18 @@ func (r *PostgresStockRepository) RestoreItems(ctx context.Context, items []doma
 	}
 
 	return tx.Commit(ctx)
+}
+
+// UpsertStock sets the available stock for a product (insert or update).
+// Called when a new product is created.
+func (r *PostgresStockRepository) UpsertStock(ctx context.Context, productID string, quantity int) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO stock (product_id, available)
+		 VALUES ($1, $2)
+		 ON CONFLICT (product_id) DO UPDATE SET available = EXCLUDED.available`,
+		productID, quantity,
+	)
+	return err
 }
 
 // canReserve is a small pure helper (kept here for the repo's use)

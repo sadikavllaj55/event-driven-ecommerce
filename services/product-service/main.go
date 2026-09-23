@@ -26,9 +26,16 @@ func main() {
 	}
 	log.Println("Connected to PostgreSQL")
 
+	// --- Infrastructure: RabbitMQ ---
+	publisher, err := NewPublisher(cfg.RabbitURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer publisher.Close()
+
 	// --- Wire the layers (dependency injection) ---
 	repo := repository.NewPostgresProductRepository(pool)
-	productSvc := service.NewProductService(repo)
+	productSvc := service.NewProductService(repo, publisher)
 	productHandler := handler.NewProductHandler(productSvc)
 
 	// --- HTTP server ---

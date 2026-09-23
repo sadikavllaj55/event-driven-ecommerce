@@ -11,8 +11,9 @@ import (
 
 // Routing keys this consumer handles
 const (
-	RoutingKeyOrderCreated  = "order.created"
-	RoutingKeyPaymentFailed = "payment.failed"
+	RoutingKeyOrderCreated   = "order.created"
+	RoutingKeyPaymentFailed  = "payment.failed"
+	RoutingKeyProductCreated = "product.created"
 )
 
 // MessageHandler translates incoming messages into service calls.
@@ -36,6 +37,8 @@ func (h *MessageHandler) Handle(routingKey string, body []byte) error {
 		return h.handleOrderCreated(ctx, body)
 	case RoutingKeyPaymentFailed:
 		return h.handlePaymentFailed(ctx, body)
+	case RoutingKeyProductCreated:
+		return h.handleProductCreated(ctx, body)
 	default:
 		log.Printf("Ignoring unknown routing key: %s", routingKey)
 		return nil
@@ -62,4 +65,18 @@ func (h *MessageHandler) handlePaymentFailed(ctx context.Context, body []byte) e
 
 	log.Printf("Received payment.failed for order %s - restoring stock", payment.OrderID)
 	return h.svc.RestoreOrder(ctx, payment)
+}
+
+func (h *MessageHandler) handleProductCreated(ctx context.Context, body []byte) error {
+	var event struct {
+		ProductID string `json:"product_id"`
+		Stock     int    `json:"stock"`
+	}
+	if err := json.Unmarshal(body, &event); err != nil {
+		log.Printf("Failed to parse product.created: %v", err)
+		return err // unparseable -> dead-letter
+	}
+
+	log.Printf("Received product.created: product %s (stock %d)", event.ProductID, event.Stock)
+	return h.svc.RegisterStock(ctx, event.ProductID, event.Stock)
 }

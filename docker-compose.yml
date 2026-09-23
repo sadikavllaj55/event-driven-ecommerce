@@ -120,10 +120,14 @@ services:
       - "8083:8083"
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/ecommerce
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       PORT: "8083"
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
     
   redis:
     image: redis:7-alpine
@@ -153,6 +157,6 @@ services:
         condition: service_started
       product-service:
         condition: service_started
-        
+
 volumes:
   postgres_data:

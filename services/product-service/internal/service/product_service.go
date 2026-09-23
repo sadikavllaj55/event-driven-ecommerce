@@ -8,13 +8,19 @@ import (
 	"product-service/internal/repository"
 )
 
-// ProductService holds the business logic for products
-type ProductService struct {
-	repo repository.ProductRepository
+// EventPublisher abstracts publishing product events.
+type EventPublisher interface {
+	PublishProductCreated(productID string, stock int) error
 }
 
-func NewProductService(repo repository.ProductRepository) *ProductService {
-	return &ProductService{repo: repo}
+// ProductService holds the business logic for products
+type ProductService struct {
+	repo      repository.ProductRepository
+	publisher EventPublisher
+}
+
+func NewProductService(repo repository.ProductRepository, publisher EventPublisher) *ProductService {
+	return &ProductService{repo: repo, publisher: publisher}
 }
 
 // CreateInput is the business input for creating a product.
@@ -51,6 +57,14 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 	if err != nil {
 		return nil, err
 	}
+
+	// Publish product.created so Inventory registers its stock.
+	// Best-effort: product creation still succeeds if the event fails.
+	if err := s.publisher.PublishProductCreated(created.ID, created.Stock); err != nil {
+		// A real system would use an outbox pattern for guaranteed delivery.
+		_ = err
+	}
+
 	created.SetDisplayPrice()
 	return created, nil
 }

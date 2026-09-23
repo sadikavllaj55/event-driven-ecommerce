@@ -17,6 +17,9 @@ const (
 	routingKeyFailed   = "stock.failed"
 	// event we listen to for compensation
 	routingKeyPaymentFailed = "payment.failed"
+	// event to register stock for new products
+	routingKeyProductCreated = "product.created"
+
 	// dead-letter setup
 	dlxName       = "orders.dlx"           // dead-letter exchange
 	dlqName       = "inventory.events.dlq" // dead-letter queue
@@ -109,7 +112,7 @@ func NewConsumer(url string) (*Consumer, error) {
 	}
 
 	// Bind the queue to the routing keys we care about
-	for _, key := range []string{routingKeyOrderCreated, routingKeyPaymentFailed} {
+	for _, key := range []string{routingKeyOrderCreated, routingKeyPaymentFailed, routingKeyProductCreated} {
 		if err := ch.QueueBind(
 			queueName,    // queue name
 			key,          // routing key

@@ -86,6 +86,15 @@ func (s *InventoryService) RestoreOrder(ctx context.Context, payment domain.Paym
 	return nil
 }
 
+// RegisterStock sets initial stock for a newly created product
+func (s *InventoryService) RegisterStock(ctx context.Context, productID string, quantity int) error {
+	if err := s.repo.UpsertStock(ctx, productID, quantity); err != nil {
+		return err
+	}
+	log.Printf("Registered stock for product %s: %d units", productID, quantity)
+	return nil
+}
+
 // publishResult marshals and publishes a saga result
 func (s *InventoryService) publishResult(routingKey string, result domain.SagaResult) error {
 	body, err := marshalResult(result)
