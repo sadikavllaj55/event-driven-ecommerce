@@ -51,8 +51,11 @@ CREATE TABLE IF NOT EXISTS users (
     role user_role NOT NULL DEFAULT 'buyer',
     verified BOOLEAN NOT NULL DEFAULT false,
     verification_token TEXT,
+    totp_secret TEXT,
+    totp_enabled BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
 
 
 -- ============================================

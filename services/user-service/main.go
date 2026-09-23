@@ -35,7 +35,8 @@ func main() {
 
 	// --- Wire the layers (dependency injection) ---
 	repo := repository.NewPostgresUserRepository(pool)
-	userSvc := service.NewUserService(repo, BcryptHasher{}, publisher)
+	totpManager := NewTOTPManager()
+	userSvc := service.NewUserService(repo, BcryptHasher{}, publisher, totpManager)
 	userHandler := handler.NewUserHandler(userSvc)
 
 	// --- HTTP server ---

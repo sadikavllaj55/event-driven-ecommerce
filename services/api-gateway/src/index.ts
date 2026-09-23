@@ -69,6 +69,15 @@ const gateway = (target: string) =>
     pathRewrite: (_path, req) => (req as Request).originalUrl,
   });
 
+// Issues a JWT for a verified user (used by both login steps)
+function issueToken(user: { id: string; email: string; role: string }): string {
+  return jwt.sign(
+    { sub: user.id, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: '1h' },
+  );
+}
+
 // ---------- Health (gateway itself) ----------
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'api-gateway' });
@@ -86,21 +95,54 @@ app.post('/login', express.json(), async (req: Request, res: Response) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+
+    // 428 = User Service says this account has 2FA enabled
+    if (response.status === 428) {
+      return res.status(428).json({
+        error: '2fa_required',
+        message: 'Provide your 2FA code via POST /login/2fa',
+      });
+    }
+
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       return res
         .status(response.status)
         .json({ error: body.error ?? 'invalid credentials' });
     }
+
     const user = await response.json();
-    const token = jwt.sign(
-      { sub: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '1h' },
-    );
-    return res.json({ token });
+    return res.json({ token: issueToken(user) });
   } catch (err) {
     console.error('Login failed calling user service:', err);
+    return res
+      .status(502)
+      .json({ error: 'authentication service unavailable' });
+  }
+});
+
+// Step 2 of login for 2FA-enabled accounts
+app.post('/login/2fa', express.json(), async (req: Request, res: Response) => {
+  const { email, code } = req.body ?? {};
+  if (!email || !code) {
+    return res.status(400).json({ error: 'email and code are required' });
+  }
+  try {
+    const response = await fetch(`${USER_SERVICE_URL}/login/2fa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return res
+        .status(response.status)
+        .json({ error: body.error ?? 'invalid 2FA code' });
+    }
+    const user = await response.json();
+    return res.json({ token: issueToken(user) });
+  } catch (err) {
+    console.error('2FA login failed calling user service:', err);
     return res
       .status(502)
       .json({ error: 'authentication service unavailable' });
@@ -127,6 +169,9 @@ app.delete(
   injectUserId,
   gateway(PRODUCT_SERVICE_URL),
 );
+// 2FA setup/enable (authenticated — identity via X-User-ID)
+app.post('/2fa/setup', authenticate, injectUserId, gateway(USER_SERVICE_URL));
+app.post('/2fa/enable', authenticate, injectUserId, gateway(USER_SERVICE_URL));
 
 // Product images
 app.get('/products/:id/images', gateway(PRODUCT_SERVICE_URL)); // public

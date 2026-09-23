@@ -34,13 +34,17 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-// RegisterRoutes attaches user routes to the mux
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("POST /register", h.register)
 	mux.HandleFunc("POST /login", h.login)
 	mux.HandleFunc("GET /users/{id}", h.getUser)
 	mux.HandleFunc("GET /verify", h.verify)
+
+	// 2FA
+	mux.HandleFunc("POST /2fa/setup", h.setup2FA)
+	mux.HandleFunc("POST /2fa/enable", h.enable2FA)
+	mux.HandleFunc("POST /login/2fa", h.login2FA)
 }
 
 func (h *UserHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +107,75 @@ func (h *UserHandler) verify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type enable2FARequest struct {
+	Code string `json:"code"`
+}
+
+type login2FARequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// setup2FA generates a TOTP secret and returns the otpauth URL (for the QR).
+// Identity comes from the gateway-verified X-User-ID header.
+func (h *UserHandler) setup2FA(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "missing user identity")
+		return
+	}
+
+	otpauthURL, err := h.svc.Setup2FA(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"otpauth_url": otpauthURL,
+		"message":     "scan this URL with your authenticator app, then call /2fa/enable with a code",
+	})
+}
+
+// enable2FA verifies a code and enables 2FA
+func (h *UserHandler) enable2FA(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "missing user identity")
+		return
+	}
+
+	var req enable2FARequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.svc.Enable2FA(r.Context(), userID, req.Code); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "2FA enabled successfully"})
+}
+
+// login2FA is step 2 of login — verifies the TOTP code
+func (h *UserHandler) login2FA(w http.ResponseWriter, r *http.Request) {
+	var req login2FARequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	user, err := h.svc.Verify2FALogin(r.Context(), req.Email, req.Code)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}
+
 // --- Error mapping: domain errors → HTTP status codes ---
 
 func writeServiceError(w http.ResponseWriter, err error) {
@@ -121,6 +194,15 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "user not found")
 	case errors.Is(err, domain.ErrInvalidToken):
 		writeError(w, http.StatusNotFound, "invalid or expired verification token")
+	case errors.Is(err, domain.Err2FARequired):
+		// Special: 428 signals the client to provide a 2FA code
+		writeError(w, http.StatusPreconditionRequired, "2FA code required")
+	case errors.Is(err, domain.ErrInvalid2FACode):
+		writeError(w, http.StatusUnauthorized, "invalid 2FA code")
+	case errors.Is(err, domain.Err2FANotEnabled):
+		writeError(w, http.StatusBadRequest, "2FA is not enabled")
+	case errors.Is(err, domain.Err2FAAlreadyEnabled):
+		writeError(w, http.StatusConflict, "2FA is already enabled")
 	default:
 		log.Printf("Unexpected error: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")

@@ -23,16 +23,22 @@ type EventPublisher interface {
 	PublishUserRegistered(userID, email, name, verificationToken string) error
 }
 
+// TOTPProvider abstracts TOTP secret generation and verification
+type TOTPProvider interface {
+	Generate(accountEmail string) (secret string, otpauthURL string, err error)
+	Verify(code, secret string) bool
+}
+
 // UserService holds the business logic for users
 type UserService struct {
 	repo      repository.UserRepository
 	hasher    PasswordHasher
 	publisher EventPublisher
+	totp      TOTPProvider
 }
 
-// NewUserService wires the service with its dependencies
-func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher) *UserService {
-	return &UserService{repo: repo, hasher: hasher, publisher: publisher}
+func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher, totp TOTPProvider) *UserService {
+	return &UserService{repo: repo, hasher: hasher, publisher: publisher, totp: totp}
 }
 
 // Register validates input, creates an unverified user, and publishes a
@@ -108,6 +114,11 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*domai
 		return nil, domain.ErrEmailNotVerified
 	}
 
+	// If 2FA is enabled, signal that a code is required (don't return the user yet)
+	if user.TOTPEnabled {
+		return nil, domain.Err2FARequired
+	}
+
 	return user, nil
 }
 
@@ -122,4 +133,64 @@ func (s *UserService) Verify(ctx context.Context, token string) error {
 		return domain.ErrInvalidToken
 	}
 	return s.repo.VerifyByToken(ctx, token)
+}
+
+// Setup2FA generates a TOTP secret for the user and returns the otpauth URL (for the QR).
+// The secret is stored but 2FA is NOT enabled until verified.
+func (s *UserService) Setup2FA(ctx context.Context, userID string) (otpauthURL string, err error) {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if user.TOTPEnabled {
+		return "", domain.Err2FAAlreadyEnabled
+	}
+
+	secret, url, err := s.totp.Generate(user.Email)
+	if err != nil {
+		return "", err
+	}
+
+	if err := s.repo.SetTOTPSecret(ctx, userID, secret); err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+// Enable2FA verifies a code against the stored secret, then enables 2FA.
+func (s *UserService) Enable2FA(ctx context.Context, userID, code string) error {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user.TOTPEnabled {
+		return domain.Err2FAAlreadyEnabled
+	}
+	if user.TOTPSecret == "" {
+		return domain.Err2FANotEnabled // no setup done yet
+	}
+
+	if !s.totp.Verify(code, user.TOTPSecret) {
+		return domain.ErrInvalid2FACode
+	}
+
+	return s.repo.EnableTOTP(ctx, userID)
+}
+
+// Verify2FALogin verifies a TOTP code for a user during login (step 2)
+func (s *UserService) Verify2FALogin(ctx context.Context, email, code string) (*domain.User, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+
+	user, err := s.repo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+	if !user.TOTPEnabled {
+		return nil, domain.Err2FANotEnabled
+	}
+	if !s.totp.Verify(code, user.TOTPSecret) {
+		return nil, domain.ErrInvalid2FACode
+	}
+	return user, nil
 }
