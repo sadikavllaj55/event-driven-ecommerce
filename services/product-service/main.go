@@ -79,18 +79,27 @@ func main() {
 
 	// Create a product (seller only)
 	mux.HandleFunc("POST /products", func(w http.ResponseWriter, r *http.Request) {
+		// Seller identity comes from the gateway-verified X-User-ID header
+		sellerID := r.Header.Get("X-User-ID")
+		if sellerID == "" {
+			writeError(w, http.StatusBadRequest, "missing seller identity")
+			return
+		}
+
 		var req CreateProductRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
+		req.SellerID = sellerID // override with the trusted identity
 
 		// Validate
 		req.Name = strings.TrimSpace(req.Name)
-		if req.SellerID == "" || req.Name == "" {
-			writeError(w, http.StatusBadRequest, "seller_id and name are required")
+		if req.Name == "" {
+			writeError(w, http.StatusBadRequest, "name is required")
 			return
 		}
+
 		if req.PriceCents < 0 || req.Stock < 0 {
 			writeError(w, http.StatusBadRequest, "price and stock must be non-negative")
 			return

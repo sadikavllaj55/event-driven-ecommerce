@@ -53,8 +53,11 @@ func main() {
 	})
 
 	// View cart
-	mux.HandleFunc("GET /cart/{buyerId}", func(w http.ResponseWriter, r *http.Request) {
-		buyerID := r.PathValue("buyerId")
+	mux.HandleFunc("GET /cart", func(w http.ResponseWriter, r *http.Request) {
+		buyerID, ok := buyerFromHeader(w, r)
+		if !ok {
+			return
+		}
 		cart, err := store.GetCart(buyerID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to fetch cart")
@@ -64,8 +67,11 @@ func main() {
 	})
 
 	// Add item to cart
-	mux.HandleFunc("POST /cart/{buyerId}/items", func(w http.ResponseWriter, r *http.Request) {
-		buyerID := r.PathValue("buyerId")
+	mux.HandleFunc("POST /cart/items", func(w http.ResponseWriter, r *http.Request) {
+		buyerID, ok := buyerFromHeader(w, r)
+		if !ok {
+			return
+		}
 
 		var req AddItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -90,8 +96,11 @@ func main() {
 	})
 
 	// Remove item from cart
-	mux.HandleFunc("DELETE /cart/{buyerId}/items/{productId}", func(w http.ResponseWriter, r *http.Request) {
-		buyerID := r.PathValue("buyerId")
+	mux.HandleFunc("DELETE /cart/items/{productId}", func(w http.ResponseWriter, r *http.Request) {
+		buyerID, ok := buyerFromHeader(w, r)
+		if !ok {
+			return
+		}
 		productID := r.PathValue("productId")
 
 		cart, err := store.RemoveItem(buyerID, productID)
@@ -103,8 +112,11 @@ func main() {
 	})
 
 	// Checkout — turn the cart into an order
-	mux.HandleFunc("POST /cart/{buyerId}/checkout", func(w http.ResponseWriter, r *http.Request) {
-		buyerID := r.PathValue("buyerId")
+	mux.HandleFunc("POST /cart/checkout", func(w http.ResponseWriter, r *http.Request) {
+		buyerID, ok := buyerFromHeader(w, r)
+		if !ok {
+			return
+		}
 
 		cart, err := store.GetCart(buyerID)
 		if err != nil {
@@ -153,6 +165,18 @@ func main() {
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// buyerFromHeader extracts the buyer ID from the X-User-ID header
+// (set by the gateway from the verified JWT). Writes a 400 and returns
+// ok=false if it's missing.
+func buyerFromHeader(w http.ResponseWriter, r *http.Request) (string, bool) {
+	buyerID := r.Header.Get("X-User-ID")
+	if buyerID == "" {
+		writeError(w, http.StatusBadRequest, "missing buyer identity")
+		return "", false
+	}
+	return buyerID, true
 }
 
 // createOrder calls the Order Service to create an order from the cart
