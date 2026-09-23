@@ -9,9 +9,10 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	RedisURL        string
-	OrderServiceURL string
-	Port            string
+	RedisURL          string
+	OrderServiceURL   string
+	ProductServiceURL string
+	Port              string
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables
@@ -21,9 +22,10 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		RedisURL:        getEnv("REDIS_URL", "localhost:6379"),
-		OrderServiceURL: getEnv("ORDER_SERVICE_URL", "http://localhost:8081"),
-		Port:            getEnv("PORT", "8084"),
+		RedisURL:          getEnv("REDIS_URL", "localhost:6379"),
+		OrderServiceURL:   getEnv("ORDER_SERVICE_URL", "http://localhost:8081"),
+		ProductServiceURL: getEnv("PRODUCT_SERVICE_URL", "http://localhost:8083"),
+		Port:              getEnv("PORT", "8084"),
 	}
 }
 

@@ -144,13 +144,15 @@ services:
     environment:
       REDIS_URL: redis:6379
       ORDER_SERVICE_URL: http://order-service:8081
+      PRODUCT_SERVICE_URL: http://product-service:8083
       PORT: "8084"
     depends_on:
       redis:
         condition: service_healthy
       order-service:
         condition: service_started
-
-
+      product-service:
+        condition: service_started
+        
 volumes:
   postgres_data:

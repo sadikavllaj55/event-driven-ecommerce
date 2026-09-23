@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 )
@@ -29,10 +30,12 @@ type createOrderRequest struct {
 
 var store *CartStore
 var orderServiceURL string
+var productServiceURL string
 
 func main() {
 	cfg := LoadConfig()
 	orderServiceURL = cfg.OrderServiceURL
+	productServiceURL = cfg.ProductServiceURL
 
 	s, err := NewCartStore(cfg.RedisURL)
 	if err != nil {
@@ -67,6 +70,7 @@ func main() {
 	})
 
 	// Add item to cart
+	// Add item to cart
 	mux.HandleFunc("POST /cart/items", func(w http.ResponseWriter, r *http.Request) {
 		buyerID, ok := buyerFromHeader(w, r)
 		if !ok {
@@ -83,10 +87,23 @@ func main() {
 			return
 		}
 
+		// SECURITY: fetch the REAL price from the Product Service.
+		// Never trust a price sent by the client.
+		product, err := FetchProduct(productServiceURL, req.ProductID)
+		if err != nil {
+			if errors.Is(err, ErrProductNotFound) {
+				writeError(w, http.StatusNotFound, "product not found")
+				return
+			}
+			log.Printf("Failed to fetch product %s: %v", req.ProductID, err)
+			writeError(w, http.StatusBadGateway, "could not verify product")
+			return
+		}
+
 		cart, err := store.AddItem(buyerID, CartItem{
-			ProductID:  req.ProductID,
+			ProductID:  product.ID,
 			Quantity:   req.Quantity,
-			PriceCents: req.PriceCents,
+			PriceCents: product.PriceCents, // the REAL price, from the server
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to add item")
