@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"product-service/internal/domain"
@@ -58,9 +59,19 @@ func (h *ProductHandler) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ProductHandler) search(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
+	q := r.URL.Query()
 
-	results, err := h.svc.Search(r.Context(), query)
+	filters := service.SearchFilters{
+		Query:      q.Get("q"),
+		CategoryID: q.Get("category"),
+		Brand:      q.Get("brand"),
+		Condition:  q.Get("condition"),
+		Gender:     q.Get("gender"),
+		MinPrice:   atoiOrZero(q.Get("min_price")),
+		MaxPrice:   atoiOrZero(q.Get("max_price")),
+	}
+
+	results, err := h.svc.Search(r.Context(), filters)
 	if err != nil {
 		log.Printf("Search failed: %v", err)
 		writeError(w, http.StatusInternalServerError, "search failed")
@@ -68,6 +79,15 @@ func (h *ProductHandler) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, results)
+}
+
+// atoiOrZero converts a string to int, returning 0 if empty/invalid
+func atoiOrZero(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 func (h *ProductHandler) list(w http.ResponseWriter, r *http.Request) {

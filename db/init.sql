@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY,
     seller_id UUID NOT NULL REFERENCES users(id),

@@ -22,9 +22,20 @@ type ImageStorage interface {
 	UploadImage(objectName string, reader io.Reader, size int64, contentType string) (string, error)
 }
 
+// SearchFilters holds optional product search filters
+type SearchFilters struct {
+	Query      string
+	CategoryID string
+	Brand      string
+	Condition  string
+	Gender     string
+	MinPrice   int
+	MaxPrice   int
+}
+
 type ProductSearch interface {
 	IndexProduct(p domain.Product) error
-	SearchProducts(query string) ([]map[string]any, error)
+	SearchProducts(f SearchFilters) ([]map[string]any, error)
 }
 
 type ProductService struct {
@@ -288,6 +299,6 @@ func (s *ProductService) DeleteProductImage(ctx context.Context, imageID, produc
 }
 
 // Search runs a full-text product search via Elasticsearch
-func (s *ProductService) Search(ctx context.Context, query string) ([]map[string]any, error) {
-	return s.search.SearchProducts(query)
+func (s *ProductService) Search(ctx context.Context, f SearchFilters) ([]map[string]any, error) {
+	return s.search.SearchProducts(f)
 }
