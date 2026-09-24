@@ -50,6 +50,7 @@ func (s *Search) IndexProduct(p domain.Product) error {
 	doc := map[string]any{
 		"id":          p.ID,
 		"seller_id":   p.SellerID,
+		"seller_name": p.SellerName,
 		"name":        p.Name,
 		"description": p.Description,
 		"price_cents": p.PriceCents,
@@ -92,7 +93,7 @@ func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, erro
 		must = append(must, map[string]any{
 			"multi_match": map[string]any{
 				"query":     f.Query,
-				"fields":    []string{"name^2", "description"},
+				"fields":    []string{"name^2", "description", "seller_name"},
 				"fuzziness": "AUTO",
 			},
 		})

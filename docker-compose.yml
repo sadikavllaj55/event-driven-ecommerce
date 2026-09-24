@@ -127,6 +127,7 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_PUBLIC_HOST: localhost:9000
+      USER_SERVICE_URL: http://user-service:8082
     depends_on:
       postgres:
         condition: service_healthy

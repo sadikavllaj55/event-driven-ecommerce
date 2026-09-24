@@ -38,15 +38,21 @@ type ProductSearch interface {
 	SearchProducts(f SearchFilters) ([]map[string]any, error)
 }
 
+// UserNameResolver fetches a user's display name by ID
+type UserNameResolver interface {
+	GetUserName(userID string) string
+}
+
 type ProductService struct {
 	repo      repository.ProductRepository
 	publisher EventPublisher
 	storage   ImageStorage
 	search    ProductSearch
+	users     UserNameResolver
 }
 
-func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage, search ProductSearch) *ProductService {
-	return &ProductService{repo: repo, publisher: publisher, storage: storage, search: search}
+func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage, search ProductSearch, users UserNameResolver) *ProductService {
+	return &ProductService{repo: repo, publisher: publisher, storage: storage, search: search, users: users}
 }
 
 // CreateInput is the business input for creating a product.
@@ -127,7 +133,9 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 		_ = err
 	}
 
-	// Index in Elasticsearch for search (best-effort)
+	// Index in Elasticsearch for search (best-effort).
+	// Fetch the seller's name so products are searchable by seller/influencer.
+	created.SellerName = s.users.GetUserName(created.SellerID)
 	if err := s.search.IndexProduct(*created); err != nil {
 		_ = err
 	}

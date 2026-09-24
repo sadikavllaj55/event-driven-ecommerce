@@ -51,7 +51,9 @@ func main() {
 		log.Fatalf("Failed to connect to Elasticsearch: %v", err)
 	}
 
-	productSvc := service.NewProductService(repo, publisher, storage, search)
+	userClient := NewUserClient(cfg.UserServiceURL)
+
+	productSvc := service.NewProductService(repo, publisher, storage, search, userClient)
 
 	productHandler := handler.NewProductHandler(productSvc)
 	// Category tree (admin-managed)

@@ -17,6 +17,7 @@ type Config struct {
 	MinioSecretKey  string
 	MinioPublicHost string
 	ElasticURL      string
+	UserServiceURL  string
 }
 
 // LoadConfig loads configuration from a .env file (if present) and environment variables
@@ -34,6 +35,7 @@ func LoadConfig() Config {
 		MinioAccessKey:  getEnv("MINIO_ACCESS_KEY", "minioadmin"),
 		MinioSecretKey:  getEnv("MINIO_SECRET_KEY", "minioadmin"),
 		MinioPublicHost: getEnv("MINIO_PUBLIC_HOST", "localhost:9000"),
+		UserServiceURL:  getEnv("USER_SERVICE_URL", "http://localhost:8082"),
 	}
 }
 
