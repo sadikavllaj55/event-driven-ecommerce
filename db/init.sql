@@ -71,6 +71,18 @@ BEGIN
         CREATE TYPE item_condition AS ENUM ('new_with_tags', 'new_without_tags', 'very_good', 'good', 'satisfactory');
     END IF;
 END$$;
+
+-- Categories (self-referencing tree, admin-managed)
+CREATE TABLE IF NOT EXISTS categories (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    parent_id UUID REFERENCES categories(id) ON DELETE RESTRICT,
+    position INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY,
     seller_id UUID NOT NULL REFERENCES users(id),
@@ -86,6 +98,7 @@ CREATE TABLE IF NOT EXISTS products (
     material TEXT NOT NULL DEFAULT '',
     color TEXT NOT NULL DEFAULT '',
     size TEXT NOT NULL DEFAULT '',
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

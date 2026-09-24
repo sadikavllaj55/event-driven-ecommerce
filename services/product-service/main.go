@@ -54,10 +54,14 @@ func main() {
 	productSvc := service.NewProductService(repo, publisher, storage, search)
 
 	productHandler := handler.NewProductHandler(productSvc)
+	// Category tree (admin-managed)
+	categorySvc := service.NewCategoryService(repo)
+	categoryHandler := handler.NewCategoryHandler(categorySvc)
 
 	// --- HTTP server ---
 	mux := http.NewServeMux()
 	productHandler.RegisterRoutes(mux)
+	categoryHandler.RegisterRoutes(mux)
 
 	port := ":" + cfg.Port
 	log.Printf("Product Service running on %s", port)

@@ -154,6 +154,7 @@ app.post('/register', gateway(USER_SERVICE_URL));
 app.get('/products/search', gateway(PRODUCT_SERVICE_URL));
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
+app.get('/categories', gateway(PRODUCT_SERVICE_URL));
 
 // ---------- PROTECTED routes (require JWT) ----------
 // Products (seller — identity via X-User-ID)
@@ -208,6 +209,27 @@ app.get(
       role: user.role,
     });
   },
+);
+app.post(
+  '/admin/categories',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.put(
+  '/admin/categories/:id',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.delete(
+  '/admin/categories/:id',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
 );
 
 app.listen(Number(PORT), () => {
