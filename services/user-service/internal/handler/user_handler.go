@@ -119,9 +119,8 @@ type login2FARequest struct {
 // setup2FA generates a TOTP secret and returns the otpauth URL (for the QR).
 // Identity comes from the gateway-verified X-User-ID header.
 func (h *UserHandler) setup2FA(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
+	userID := userFromHeader(w, r)
 	if userID == "" {
-		writeError(w, http.StatusBadRequest, "missing user identity")
 		return
 	}
 
@@ -215,6 +214,16 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+// userFromHeader reads the user identity from the gateway-set X-User-ID header
+func userFromHeader(w http.ResponseWriter, r *http.Request) string {
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "missing user identity")
+		return ""
+	}
+	return userID
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
