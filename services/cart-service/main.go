@@ -1,228 +1,41 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
+
+	"cart-service/internal/client"
+	"cart-service/internal/handler"
+	"cart-service/internal/repository"
+	"cart-service/internal/service"
 )
-
-// AddItemRequest is the body for adding an item to the cart
-type AddItemRequest struct {
-	ProductID  string `json:"product_id"`
-	Quantity   int    `json:"quantity"`
-	PriceCents int    `json:"price_cents"`
-}
-
-// --- Types for creating an order at checkout ---
-
-type orderItem struct {
-	ProductID  string `json:"product_id"`
-	Quantity   int    `json:"quantity"`
-	PriceCents int    `json:"price_cents"`
-}
-
-type createOrderRequest struct {
-	BuyerID string      `json:"buyer_id"`
-	Items   []orderItem `json:"items"`
-}
-
-var store *CartStore
-var orderServiceURL string
-var productServiceURL string
 
 func main() {
 	cfg := LoadConfig()
-	orderServiceURL = cfg.OrderServiceURL
-	productServiceURL = cfg.ProductServiceURL
 
-	s, err := NewCartStore(cfg.RedisURL)
+	// --- Infrastructure: Redis ---
+	repo, err := repository.NewRedisCartRepository(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
-	defer s.Close()
-	store = s
+	defer repo.Close()
 	log.Println("Connected to Redis")
 
+	// --- Clients (other services) ---
+	productClient := client.NewProductClient(cfg.ProductServiceURL)
+	orderClient := client.NewOrderClient(cfg.OrderServiceURL)
+
+	// --- Wire the layers (dependency injection) ---
+	cartSvc := service.NewCartService(repo, productClient, orderClient)
+	cartHandler := handler.NewCartHandler(cartSvc)
+
+	// --- HTTP server ---
 	mux := http.NewServeMux()
-
-	// Health check
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{
-			"status":  "ok",
-			"service": "cart-service",
-		})
-	})
-
-	// View cart
-	mux.HandleFunc("GET /cart", func(w http.ResponseWriter, r *http.Request) {
-		buyerID, ok := buyerFromHeader(w, r)
-		if !ok {
-			return
-		}
-		cart, err := store.GetCart(buyerID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to fetch cart")
-			return
-		}
-		writeJSON(w, http.StatusOK, cart)
-	})
-
-	// Add item to cart
-	// Add item to cart
-	mux.HandleFunc("POST /cart/items", func(w http.ResponseWriter, r *http.Request) {
-		buyerID, ok := buyerFromHeader(w, r)
-		if !ok {
-			return
-		}
-
-		var req AddItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid request body")
-			return
-		}
-		if req.ProductID == "" || req.Quantity <= 0 {
-			writeError(w, http.StatusBadRequest, "product_id and quantity (>0) are required")
-			return
-		}
-
-		// SECURITY: fetch the REAL price from the Product Service.
-		// Never trust a price sent by the client.
-		product, err := FetchProduct(productServiceURL, req.ProductID)
-		if err != nil {
-			if errors.Is(err, ErrProductNotFound) {
-				writeError(w, http.StatusNotFound, "product not found")
-				return
-			}
-			log.Printf("Failed to fetch product %s: %v", req.ProductID, err)
-			writeError(w, http.StatusBadGateway, "could not verify product")
-			return
-		}
-
-		cart, err := store.AddItem(buyerID, CartItem{
-			ProductID:  product.ID,
-			Quantity:   req.Quantity,
-			PriceCents: product.PriceCents, // the REAL price, from the server
-		})
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to add item")
-			return
-		}
-		writeJSON(w, http.StatusOK, cart)
-	})
-
-	// Remove item from cart
-	mux.HandleFunc("DELETE /cart/items/{productId}", func(w http.ResponseWriter, r *http.Request) {
-		buyerID, ok := buyerFromHeader(w, r)
-		if !ok {
-			return
-		}
-		productID := r.PathValue("productId")
-
-		cart, err := store.RemoveItem(buyerID, productID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to remove item")
-			return
-		}
-		writeJSON(w, http.StatusOK, cart)
-	})
-
-	// Checkout — turn the cart into an order
-	mux.HandleFunc("POST /cart/checkout", func(w http.ResponseWriter, r *http.Request) {
-		buyerID, ok := buyerFromHeader(w, r)
-		if !ok {
-			return
-		}
-
-		cart, err := store.GetCart(buyerID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to fetch cart")
-			return
-		}
-		if len(cart.Items) == 0 {
-			writeError(w, http.StatusBadRequest, "cart is empty")
-			return
-		}
-
-		// Build the order request from the cart
-		items := make([]orderItem, 0, len(cart.Items))
-		for _, it := range cart.Items {
-			items = append(items, orderItem{
-				ProductID:  it.ProductID,
-				Quantity:   it.Quantity,
-				PriceCents: it.PriceCents,
-			})
-		}
-		orderReq := createOrderRequest{BuyerID: buyerID, Items: items}
-
-		// Call the Order Service to create the order
-		orderResp, status, err := createOrder(orderReq)
-		if err != nil {
-			log.Printf("Checkout failed calling order service: %v", err)
-			writeError(w, http.StatusBadGateway, "failed to create order")
-			return
-		}
-
-		// If the order was created, clear the cart
-		if status == http.StatusCreated {
-			if err := store.ClearCart(buyerID); err != nil {
-				log.Printf("Warning: failed to clear cart after checkout: %v", err)
-			}
-		}
-
-		// Forward the Order Service's response back to the client
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		w.Write(orderResp)
-	})
+	cartHandler.RegisterRoutes(mux)
 
 	port := ":" + cfg.Port
 	log.Printf("Cart Service running on %s", port)
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatal(err)
 	}
-}
-
-// buyerFromHeader extracts the buyer ID from the X-User-ID header
-// (set by the gateway from the verified JWT). Writes a 400 and returns
-// ok=false if it's missing.
-func buyerFromHeader(w http.ResponseWriter, r *http.Request) (string, bool) {
-	buyerID := r.Header.Get("X-User-ID")
-	if buyerID == "" {
-		writeError(w, http.StatusBadRequest, "missing buyer identity")
-		return "", false
-	}
-	return buyerID, true
-}
-
-// createOrder calls the Order Service to create an order from the cart
-func createOrder(req createOrderRequest) ([]byte, int, error) {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	resp, err := http.Post(orderServiceURL+"/orders", "application/json", bytes.NewReader(body))
-	if err != nil {
-		return nil, 0, err
-	}
-	defer resp.Body.Close()
-
-	respBody := new(bytes.Buffer)
-	respBody.ReadFrom(resp.Body)
-
-	return respBody.Bytes(), resp.StatusCode, nil
-}
-
-// --- Helpers ---
-
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
 }
