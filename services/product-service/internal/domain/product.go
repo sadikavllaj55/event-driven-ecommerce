@@ -24,8 +24,15 @@ type Product struct {
 	PriceCents  int            `json:"price_cents"`
 	Price       string         `json:"price"`
 	Stock       int            `json:"stock"`
-	ImageURL    string         `json:"image_url"` // primary thumbnail
-	Images      []ProductImage `json:"images"`    // full gallery
+	Gender      string         `json:"gender"`
+	Brand       string         `json:"brand"`
+	ModelCode   string         `json:"model_code"`
+	Condition   string         `json:"condition"`
+	Material    string         `json:"material"`
+	Color       string         `json:"color"`
+	Size        string         `json:"size"`
+	ImageURL    string         `json:"image_url"`
+	Images      []ProductImage `json:"images"`
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
@@ -40,6 +47,27 @@ var (
 	ErrInvalidInput     = errors.New("invalid product input")
 	ErrMaxImagesReached = errors.New("maximum images per product reached")
 )
+
+// Valid gender values
+var validGenders = map[string]bool{
+	"women": true, "men": true, "unisex": true, "kids": true,
+}
+
+// Valid condition values
+var validConditions = map[string]bool{
+	"new_with_tags": true, "new_without_tags": true,
+	"very_good": true, "good": true, "satisfactory": true,
+}
+
+// IsValidGender checks if a gender value is allowed
+func IsValidGender(g string) bool {
+	return validGenders[g]
+}
+
+// IsValidCondition checks if a condition value is allowed
+func IsValidCondition(c string) bool {
+	return validConditions[c]
+}
 
 // MaxImagesPerProduct is the limit (Phase 1: hardcoded; Phase 2: admin-configurable)
 const MaxImagesPerProduct = 5

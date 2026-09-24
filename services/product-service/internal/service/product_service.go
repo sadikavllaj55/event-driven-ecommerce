@@ -47,6 +47,13 @@ type CreateInput struct {
 	PriceDollars float64
 	Stock        int
 	ImageURL     string
+	Gender       string
+	Brand        string
+	ModelCode    string
+	Condition    string
+	Material     string
+	Color        string
+	Size         string
 }
 
 // Create validates and creates a product, converting dollars to cents
@@ -59,13 +66,34 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 		return nil, domain.ErrInvalidInput
 	}
 
+	// Validate enums (default if empty)
+	if in.Gender == "" {
+		in.Gender = "unisex"
+	}
+	if !domain.IsValidGender(in.Gender) {
+		return nil, domain.ErrInvalidInput
+	}
+	if in.Condition == "" {
+		in.Condition = "good"
+	}
+	if !domain.IsValidCondition(in.Condition) {
+		return nil, domain.ErrInvalidInput
+	}
+
 	product := domain.Product{
 		SellerID:    in.SellerID,
 		Name:        name,
 		Description: in.Description,
-		PriceCents:  domain.DollarsToCents(in.PriceDollars), // convert here
+		PriceCents:  domain.DollarsToCents(in.PriceDollars),
 		Stock:       in.Stock,
 		ImageURL:    in.ImageURL,
+		Gender:      in.Gender,
+		Brand:       in.Brand,
+		ModelCode:   in.ModelCode,
+		Condition:   in.Condition,
+		Material:    in.Material,
+		Color:       in.Color,
+		Size:        in.Size,
 	}
 
 	created, err := s.repo.Create(ctx, product)
@@ -120,11 +148,31 @@ type UpdateInput struct {
 	PriceDollars float64
 	Stock        int
 	ImageURL     string
+	Gender       string
+	Brand        string
+	ModelCode    string
+	Condition    string
+	Material     string
+	Color        string
+	Size         string
 }
 
 // Update updates a product (ownership enforced by the repository)
 func (s *ProductService) Update(ctx context.Context, in UpdateInput) (*domain.Product, error) {
 	if in.SellerID == "" {
+		return nil, domain.ErrInvalidInput
+	}
+
+	if in.Gender == "" {
+		in.Gender = "unisex"
+	}
+	if !domain.IsValidGender(in.Gender) {
+		return nil, domain.ErrInvalidInput
+	}
+	if in.Condition == "" {
+		in.Condition = "good"
+	}
+	if !domain.IsValidCondition(in.Condition) {
 		return nil, domain.ErrInvalidInput
 	}
 
@@ -136,6 +184,13 @@ func (s *ProductService) Update(ctx context.Context, in UpdateInput) (*domain.Pr
 		PriceCents:  domain.DollarsToCents(in.PriceDollars),
 		Stock:       in.Stock,
 		ImageURL:    in.ImageURL,
+		Gender:      in.Gender,
+		Brand:       in.Brand,
+		ModelCode:   in.ModelCode,
+		Condition:   in.Condition,
+		Material:    in.Material,
+		Color:       in.Color,
+		Size:        in.Size,
 	}
 
 	updated, err := s.repo.Update(ctx, product)

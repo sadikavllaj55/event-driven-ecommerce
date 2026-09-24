@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS users (
 -- ============================================
 -- Products (Product Service)
 -- ============================================
+-- Product enums (Vinted-style)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'item_gender') THEN
+        CREATE TYPE item_gender AS ENUM ('women', 'men', 'unisex', 'kids');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'item_condition') THEN
+        CREATE TYPE item_condition AS ENUM ('new_with_tags', 'new_without_tags', 'very_good', 'good', 'satisfactory');
+    END IF;
+END$$;
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY,
     seller_id UUID NOT NULL REFERENCES users(id),
@@ -69,9 +79,15 @@ CREATE TABLE IF NOT EXISTS products (
     price_cents INT NOT NULL CHECK (price_cents >= 0),
     stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
     image_url TEXT NOT NULL DEFAULT '',
+    gender item_gender NOT NULL DEFAULT 'unisex',
+    brand TEXT NOT NULL DEFAULT '',
+    model_code TEXT NOT NULL DEFAULT '',
+    condition item_condition NOT NULL DEFAULT 'good',
+    material TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '',
+    size TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
 
 CREATE TABLE IF NOT EXISTS product_images (
     id UUID PRIMARY KEY,

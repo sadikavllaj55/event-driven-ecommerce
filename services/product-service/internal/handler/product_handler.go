@@ -25,9 +25,16 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 type productRequest struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
-	Price       float64 `json:"price"` // dollars, e.g. 49.99
+	Price       float64 `json:"price"`
 	Stock       int     `json:"stock"`
 	ImageURL    string  `json:"image_url"`
+	Gender      string  `json:"gender"`
+	Brand       string  `json:"brand"`
+	ModelCode   string  `json:"model_code"`
+	Condition   string  `json:"condition"`
+	Material    string  `json:"material"`
+	Color       string  `json:"color"`
+	Size        string  `json:"size"`
 }
 
 // RegisterRoutes attaches product routes to the mux
@@ -100,7 +107,15 @@ func (h *ProductHandler) create(w http.ResponseWriter, r *http.Request) {
 		PriceDollars: req.Price,
 		Stock:        req.Stock,
 		ImageURL:     req.ImageURL,
+		Gender:       req.Gender,
+		Brand:        req.Brand,
+		ModelCode:    req.ModelCode,
+		Condition:    req.Condition,
+		Material:     req.Material,
+		Color:        req.Color,
+		Size:         req.Size,
 	})
+
 	if err != nil {
 		writeProductError(w, err)
 		return
@@ -130,7 +145,15 @@ func (h *ProductHandler) update(w http.ResponseWriter, r *http.Request) {
 		PriceDollars: req.Price,
 		Stock:        req.Stock,
 		ImageURL:     req.ImageURL,
+		Gender:       req.Gender,
+		Brand:        req.Brand,
+		ModelCode:    req.ModelCode,
+		Condition:    req.Condition,
+		Material:     req.Material,
+		Color:        req.Color,
+		Size:         req.Size,
 	})
+
 	if err != nil {
 		writeProductError(w, err)
 		return

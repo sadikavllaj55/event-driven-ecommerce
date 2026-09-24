@@ -42,10 +42,14 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 	p.ID = uuid.NewString()
 
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO products (id, seller_id, name, description, price_cents, stock, image_url)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`INSERT INTO products
+		 (id, seller_id, name, description, price_cents, stock, image_url,
+		  gender, brand, model_code, condition, material, color, size)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		p.ID, p.SellerID, p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL,
+		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +59,8 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 // List returns all products (newest first)
 func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, seller_id, name, description, price_cents, stock, image_url, created_at
+		`SELECT id, seller_id, name, description, price_cents, stock, image_url,
+		        gender, brand, model_code, condition, material, color, size, created_at
 		 FROM products ORDER BY created_at DESC`,
 	)
 	if err != nil {
@@ -67,7 +72,9 @@ func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product,
 	for rows.Next() {
 		var p domain.Product
 		if err := rows.Scan(&p.ID, &p.SellerID, &p.Name, &p.Description,
-			&p.PriceCents, &p.Stock, &p.ImageURL, &p.CreatedAt); err != nil {
+			&p.PriceCents, &p.Stock, &p.ImageURL,
+			&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
+			&p.CreatedAt); err != nil {
 			return nil, err
 		}
 		products = append(products, p)
@@ -79,12 +86,14 @@ func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product,
 func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*domain.Product, error) {
 	var p domain.Product
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, seller_id, name, description, price_cents, stock, image_url, created_at
+		`SELECT id, seller_id, name, description, price_cents, stock, image_url,
+		        gender, brand, model_code, condition, material, color, size, created_at
 		 FROM products WHERE id = $1`,
 		id,
 	).Scan(&p.ID, &p.SellerID, &p.Name, &p.Description,
-		&p.PriceCents, &p.Stock, &p.ImageURL, &p.CreatedAt)
-
+		&p.PriceCents, &p.Stock, &p.ImageURL,
+		&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
+		&p.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrProductNotFound
 	}
@@ -106,10 +115,15 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*do
 func (r *PostgresProductRepository) Update(ctx context.Context, p domain.Product) (*domain.Product, error) {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE products
-		 SET name = $1, description = $2, price_cents = $3, stock = $4, image_url = $5
-		 WHERE id = $6 AND seller_id = $7`,
-		p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL, p.ID, p.SellerID,
+		 SET name = $1, description = $2, price_cents = $3, stock = $4, image_url = $5,
+		     gender = $6, brand = $7, model_code = $8, condition = $9,
+		     material = $10, color = $11, size = $12
+		 WHERE id = $13 AND seller_id = $14`,
+		p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL,
+		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size,
+		p.ID, p.SellerID,
 	)
+
 	if err != nil {
 		return nil, err
 	}
