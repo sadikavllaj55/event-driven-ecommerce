@@ -39,6 +39,27 @@ type productRequest struct {
 	CategoryID  *string `json:"category_id"`
 }
 
+// toProductInput maps an HTTP request to the service input (shared by create/update)
+func (req productRequest) toProductInput(id, sellerID string) service.ProductInput {
+	return service.ProductInput{
+		ID:           id,
+		SellerID:     sellerID,
+		Name:         req.Name,
+		Description:  req.Description,
+		PriceDollars: req.Price,
+		Stock:        req.Stock,
+		ImageURL:     req.ImageURL,
+		Gender:       req.Gender,
+		Brand:        req.Brand,
+		ModelCode:    req.ModelCode,
+		Condition:    req.Condition,
+		Material:     req.Material,
+		Color:        req.Color,
+		Size:         req.Size,
+		CategoryID:   req.CategoryID,
+	}
+}
+
 // RegisterRoutes attaches product routes to the mux
 func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
@@ -121,22 +142,7 @@ func (h *ProductHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := h.svc.Create(r.Context(), service.CreateInput{
-		SellerID:     sellerID,
-		Name:         req.Name,
-		Description:  req.Description,
-		PriceDollars: req.Price,
-		Stock:        req.Stock,
-		ImageURL:     req.ImageURL,
-		Gender:       req.Gender,
-		Brand:        req.Brand,
-		ModelCode:    req.ModelCode,
-		Condition:    req.Condition,
-		Material:     req.Material,
-		Color:        req.Color,
-		Size:         req.Size,
-		CategoryID:   req.CategoryID,
-	})
+	product, err := h.svc.Create(r.Context(), req.toProductInput("", sellerID))
 
 	if err != nil {
 		writeProductError(w, err)
@@ -159,23 +165,7 @@ func (h *ProductHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := h.svc.Update(r.Context(), service.UpdateInput{
-		ID:           r.PathValue("id"),
-		SellerID:     sellerID,
-		Name:         req.Name,
-		Description:  req.Description,
-		PriceDollars: req.Price,
-		Stock:        req.Stock,
-		ImageURL:     req.ImageURL,
-		Gender:       req.Gender,
-		Brand:        req.Brand,
-		ModelCode:    req.ModelCode,
-		Condition:    req.Condition,
-		Material:     req.Material,
-		Color:        req.Color,
-		Size:         req.Size,
-		CategoryID:   req.CategoryID,
-	})
+	product, err := h.svc.Update(r.Context(), req.toProductInput(r.PathValue("id"), sellerID))
 
 	if err != nil {
 		writeProductError(w, err)

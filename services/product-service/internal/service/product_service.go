@@ -2,15 +2,12 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"strings"
-
-	"github.com/google/uuid"
-
 	"product-service/internal/domain"
 	"product-service/internal/repository"
 )
+
+// --- Dependencies (interfaces for dependency inversion) ---
 
 // EventPublisher abstracts publishing product events.
 type EventPublisher interface {
@@ -33,6 +30,7 @@ type SearchFilters struct {
 	MaxPrice   int
 }
 
+// ProductSearch abstracts indexing and searching products
 type ProductSearch interface {
 	IndexProduct(p domain.Product) error
 	SearchProducts(f SearchFilters) ([]map[string]any, error)
@@ -43,6 +41,7 @@ type UserNameResolver interface {
 	GetUserName(userID string) string
 }
 
+// ProductService holds the business logic for products
 type ProductService struct {
 	repo      repository.ProductRepository
 	publisher EventPublisher
@@ -51,97 +50,61 @@ type ProductService struct {
 	users     UserNameResolver
 }
 
-func NewProductService(repo repository.ProductRepository, publisher EventPublisher, storage ImageStorage, search ProductSearch, users UserNameResolver) *ProductService {
+func NewProductService(
+	repo repository.ProductRepository,
+	publisher EventPublisher,
+	storage ImageStorage,
+	search ProductSearch,
+	users UserNameResolver,
+) *ProductService {
 	return &ProductService{repo: repo, publisher: publisher, storage: storage, search: search, users: users}
 }
 
-// CreateInput is the business input for creating a product.
-// Price is in DOLLARS (e.g. 49.99) — converted to cents internally.
-type CreateInput struct {
-	SellerID     string
-	Name         string
-	Description  string
-	PriceDollars float64
-	Stock        int
-	ImageURL     string
-	Gender       string
-	Brand        string
-	ModelCode    string
-	Condition    string
-	Material     string
-	Color        string
-	Size         string
-	CategoryID   *string
-}
+// --- Core CRUD ---
 
-// Create validates and creates a product, converting dollars to cents
-func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Product, error) {
-	name := strings.TrimSpace(in.Name)
-	if in.SellerID == "" || name == "" {
-		return nil, domain.ErrInvalidInput
+// Create validates and creates a product
+func (s *ProductService) Create(ctx context.Context, in ProductInput) (*domain.Product, error) {
+	if err := s.normalizeAndValidate(ctx, &in); err != nil {
+		return nil, err
 	}
-	if in.PriceDollars < 0 || in.Stock < 0 {
+	if in.Name == "" {
 		return nil, domain.ErrInvalidInput
 	}
 
-	// Validate enums (default if empty)
-	if in.Gender == "" {
-		in.Gender = "unisex"
-	}
-	if !domain.IsValidGender(in.Gender) {
-		return nil, domain.ErrInvalidInput
-	}
-	if in.Condition == "" {
-		in.Condition = "good"
-	}
-	if !domain.IsValidCondition(in.Condition) {
-		return nil, domain.ErrInvalidInput
-	}
-	// If a category is given, verify it exists
-	if in.CategoryID != nil {
-		if _, err := s.repo.GetCategory(ctx, *in.CategoryID); err != nil {
-			return nil, err // ErrCategoryNotFound
-		}
-	}
-
-	product := domain.Product{
-		SellerID:    in.SellerID,
-		Name:        name,
-		Description: in.Description,
-		PriceCents:  domain.DollarsToCents(in.PriceDollars),
-		Stock:       in.Stock,
-		ImageURL:    in.ImageURL,
-		Gender:      in.Gender,
-		Brand:       in.Brand,
-		ModelCode:   in.ModelCode,
-		Condition:   in.Condition,
-		Material:    in.Material,
-		Color:       in.Color,
-		Size:        in.Size,
-		CategoryID:  in.CategoryID,
-	}
-
-	created, err := s.repo.Create(ctx, product)
+	created, err := s.repo.Create(ctx, in.toDomain())
 	if err != nil {
 		return nil, err
 	}
 
-	// Publish product.created so Inventory registers its stock.
-	// Best-effort: product creation still succeeds if the event fails.
-	if err := s.publisher.PublishProductCreated(created.ID, created.Stock); err != nil {
-		// A real system would use an outbox pattern for guaranteed delivery.
-		_ = err
-	}
-
-	// Index in Elasticsearch for search (best-effort).
-	// Fetch the seller's name so products are searchable by seller/influencer.
-	created.SellerName = s.users.GetUserName(created.SellerID)
-	if err := s.search.IndexProduct(*created); err != nil {
-		_ = err
-	}
+	// Best-effort side effects (a real system would use an outbox for guarantees)
+	s.afterCreate(created)
 
 	created.SetDisplayPrice()
 	return created, nil
+}
+
+// Update updates a product (ownership enforced by the repository)
+func (s *ProductService) Update(ctx context.Context, in ProductInput) (*domain.Product, error) {
+	if err := s.normalizeAndValidate(ctx, &in); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.repo.Update(ctx, in.toDomain())
+	if err != nil {
+		return nil, err
+	}
+	updated.SetDisplayPrice()
+	return updated, nil
+}
+
+// afterCreate runs best-effort post-create side effects (events + search indexing)
+func (s *ProductService) afterCreate(p *domain.Product) {
+	// Notify Inventory to register stock
+	_ = s.publisher.PublishProductCreated(p.ID, p.Stock)
+
+	// Index for search, including the seller name (for influencer search)
+	p.SellerName = s.users.GetUserName(p.SellerID)
+	_ = s.search.IndexProduct(*p)
 }
 
 // List returns all products with display prices set
@@ -166,144 +129,12 @@ func (s *ProductService) Get(ctx context.Context, id string) (*domain.Product, e
 	return product, nil
 }
 
-// UpdateInput is the business input for updating a product
-type UpdateInput struct {
-	ID           string
-	SellerID     string
-	Name         string
-	Description  string
-	PriceDollars float64
-	Stock        int
-	ImageURL     string
-	Gender       string
-	Brand        string
-	ModelCode    string
-	Condition    string
-	Material     string
-	Color        string
-	Size         string
-	CategoryID   *string
-}
-
-// Update updates a product (ownership enforced by the repository)
-func (s *ProductService) Update(ctx context.Context, in UpdateInput) (*domain.Product, error) {
-	if in.SellerID == "" {
-		return nil, domain.ErrInvalidInput
-	}
-
-	if in.Gender == "" {
-		in.Gender = "unisex"
-	}
-	if !domain.IsValidGender(in.Gender) {
-		return nil, domain.ErrInvalidInput
-	}
-	if in.Condition == "" {
-		in.Condition = "good"
-	}
-	if !domain.IsValidCondition(in.Condition) {
-		return nil, domain.ErrInvalidInput
-	}
-	if in.CategoryID != nil {
-		if _, err := s.repo.GetCategory(ctx, *in.CategoryID); err != nil {
-			return nil, err
-		}
-	}
-
-	product := domain.Product{
-		ID:          in.ID,
-		SellerID:    in.SellerID,
-		Name:        in.Name,
-		Description: in.Description,
-		PriceCents:  domain.DollarsToCents(in.PriceDollars),
-		Stock:       in.Stock,
-		ImageURL:    in.ImageURL,
-		Gender:      in.Gender,
-		Brand:       in.Brand,
-		ModelCode:   in.ModelCode,
-		Condition:   in.Condition,
-		Material:    in.Material,
-		Color:       in.Color,
-		Size:        in.Size,
-		CategoryID:  in.CategoryID,
-	}
-
-	updated, err := s.repo.Update(ctx, product)
-	if err != nil {
-		return nil, err
-	}
-	updated.SetDisplayPrice()
-	return updated, nil
-}
-
 // Delete removes a product (ownership enforced by the repository)
 func (s *ProductService) Delete(ctx context.Context, id, sellerID string) error {
 	if sellerID == "" {
 		return domain.ErrInvalidInput
 	}
 	return s.repo.Delete(ctx, id, sellerID)
-}
-
-// SetImageURL updates a product's image URL (ownership enforced by the repo)
-func (s *ProductService) SetImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error) {
-	product, err := s.repo.UpdateImageURL(ctx, id, sellerID, imageURL)
-	if err != nil {
-		return nil, err
-	}
-	product.SetDisplayPrice()
-	return product, nil
-}
-
-// AddProductImage uploads an image for a product (ownership + max enforced).
-func (s *ProductService) AddProductImage(
-	ctx context.Context,
-	productID, sellerID, filename, contentType string,
-	reader io.Reader,
-	size int64,
-) (*domain.ProductImage, error) {
-	// Ownership check — only the product's seller can add images
-	owner, err := s.repo.GetProductSeller(ctx, productID)
-	if err != nil {
-		return nil, err // ErrProductNotFound if missing
-	}
-	if owner != sellerID {
-		return nil, domain.ErrProductNotFound // hide existence from non-owners
-	}
-
-	// Enforce the max images limit
-	count, err := s.repo.CountImages(ctx, productID)
-	if err != nil {
-		return nil, err
-	}
-	if count >= domain.MaxImagesPerProduct {
-		return nil, domain.ErrMaxImagesReached
-	}
-
-	// Upload to storage (object name namespaced by product)
-	objectName := fmt.Sprintf("%s/%s-%s", productID, uuid.NewString(), filename)
-	url, err := s.storage.UploadImage(objectName, reader, size, contentType)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save the image record
-	return s.repo.AddImage(ctx, productID, url)
-}
-
-// ListProductImages returns a product's image gallery
-func (s *ProductService) ListProductImages(ctx context.Context, productID string) ([]domain.ProductImage, error) {
-	return s.repo.ListImages(ctx, productID)
-}
-
-// DeleteProductImage removes an image (ownership enforced)
-func (s *ProductService) DeleteProductImage(ctx context.Context, imageID, productID, sellerID string) error {
-	owner, err := s.repo.GetProductSeller(ctx, productID)
-	if err != nil {
-		return err
-	}
-	if owner != sellerID {
-		return domain.ErrProductNotFound
-	}
-	return s.repo.DeleteImage(ctx, imageID, productID)
 }
 
 // Search runs a full-text product search via Elasticsearch

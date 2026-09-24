@@ -38,7 +38,28 @@ func NewPostgresProductRepository(pool *pgxpool.Pool) *PostgresProductRepository
 	return &PostgresProductRepository{pool: pool}
 }
 
-// Create inserts a new product
+// productColumns is the single source of truth for product SELECT column order.
+// It MUST match the scan order in scanProduct.
+const productColumns = `id, seller_id, name, description, price_cents, stock, image_url,
+	gender, brand, model_code, condition, material, color, size, category_id, created_at`
+
+// rowScanner is satisfied by both pgx.Row and pgx.Rows
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanProduct scans a single product row (single source of truth for scan order).
+func scanProduct(row rowScanner) (domain.Product, error) {
+	var p domain.Product
+	err := row.Scan(
+		&p.ID, &p.SellerID, &p.Name, &p.Description, &p.PriceCents, &p.Stock, &p.ImageURL,
+		&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
+		&p.CategoryID, &p.CreatedAt,
+	)
+	return p, err
+}
+
+// Create inserts a new product and returns it (with images loaded)
 func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product) (*domain.Product, error) {
 	p.ID = uuid.NewString()
 
@@ -50,7 +71,6 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 		p.ID, p.SellerID, p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL,
 		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size, p.CategoryID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +80,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 // List returns all products (newest first)
 func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, seller_id, name, description, price_cents, stock, image_url,
-		        gender, brand, model_code, condition, material, color, size, category_id, created_at
-		 FROM products ORDER BY created_at DESC`,
+		`SELECT `+productColumns+` FROM products ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -71,11 +89,8 @@ func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product,
 
 	products := []domain.Product{}
 	for rows.Next() {
-		var p domain.Product
-		if err := rows.Scan(&p.ID, &p.SellerID, &p.Name, &p.Description,
-			&p.PriceCents, &p.Stock, &p.ImageURL,
-			&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
-			&p.CategoryID, &p.CreatedAt); err != nil {
+		p, err := scanProduct(rows)
+		if err != nil {
 			return nil, err
 		}
 		products = append(products, p)
@@ -83,18 +98,12 @@ func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product,
 	return products, rows.Err()
 }
 
-// GetByID returns a single product
+// GetByID returns a single product with its image gallery
 func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*domain.Product, error) {
-	var p domain.Product
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, seller_id, name, description, price_cents, stock, image_url,
-		        gender, brand, model_code, condition, material, color, size, category_id, created_at
-		 FROM products WHERE id = $1`,
-		id,
-	).Scan(&p.ID, &p.SellerID, &p.Name, &p.Description,
-		&p.PriceCents, &p.Stock, &p.ImageURL,
-		&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
-		&p.CategoryID, &p.CreatedAt)
+	row := r.pool.QueryRow(ctx,
+		`SELECT `+productColumns+` FROM products WHERE id = $1`, id,
+	)
+	p, err := scanProduct(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrProductNotFound
 	}
@@ -102,13 +111,11 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*do
 		return nil, err
 	}
 
-	// Load the product's image gallery
 	images, err := r.ListImages(ctx, p.ID)
 	if err != nil {
 		return nil, err
 	}
 	p.Images = images
-
 	return &p, nil
 }
 
@@ -124,12 +131,11 @@ func (r *PostgresProductRepository) Update(ctx context.Context, p domain.Product
 		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size, p.CategoryID,
 		p.ID, p.SellerID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 	if tag.RowsAffected() == 0 {
-		return nil, domain.ErrProductNotFound // doesn't exist or not owned
+		return nil, domain.ErrProductNotFound
 	}
 	return r.GetByID(ctx, p.ID)
 }
@@ -144,7 +150,7 @@ func (r *PostgresProductRepository) UpdateImageURL(ctx context.Context, id, sell
 		return nil, err
 	}
 	if tag.RowsAffected() == 0 {
-		return nil, domain.ErrProductNotFound // doesn't exist or not owned
+		return nil, domain.ErrProductNotFound
 	}
 	return r.GetByID(ctx, id)
 }
