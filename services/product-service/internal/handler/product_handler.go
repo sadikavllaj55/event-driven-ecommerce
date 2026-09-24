@@ -35,6 +35,7 @@ type productRequest struct {
 	Material    string  `json:"material"`
 	Color       string  `json:"color"`
 	Size        string  `json:"size"`
+	CategoryID  *string `json:"category_id"`
 }
 
 // RegisterRoutes attaches product routes to the mux
@@ -114,6 +115,7 @@ func (h *ProductHandler) create(w http.ResponseWriter, r *http.Request) {
 		Material:     req.Material,
 		Color:        req.Color,
 		Size:         req.Size,
+		CategoryID:   req.CategoryID,
 	})
 
 	if err != nil {
@@ -152,6 +154,7 @@ func (h *ProductHandler) update(w http.ResponseWriter, r *http.Request) {
 		Material:     req.Material,
 		Color:        req.Color,
 		Size:         req.Size,
+		CategoryID:   req.CategoryID,
 	})
 
 	if err != nil {
@@ -281,6 +284,8 @@ func writeProductError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrProductNotFound):
 		writeError(w, http.StatusNotFound, "product not found or not owned by you")
+	case errors.Is(err, domain.ErrCategoryNotFound):
+		writeError(w, http.StatusBadRequest, "category not found")
 	case errors.Is(err, domain.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "invalid product input")
 	default:

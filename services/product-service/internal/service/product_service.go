@@ -54,6 +54,7 @@ type CreateInput struct {
 	Material     string
 	Color        string
 	Size         string
+	CategoryID   *string
 }
 
 // Create validates and creates a product, converting dollars to cents
@@ -79,6 +80,12 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 	if !domain.IsValidCondition(in.Condition) {
 		return nil, domain.ErrInvalidInput
 	}
+	// If a category is given, verify it exists
+	if in.CategoryID != nil {
+		if _, err := s.repo.GetCategory(ctx, *in.CategoryID); err != nil {
+			return nil, err // ErrCategoryNotFound
+		}
+	}
 
 	product := domain.Product{
 		SellerID:    in.SellerID,
@@ -94,6 +101,7 @@ func (s *ProductService) Create(ctx context.Context, in CreateInput) (*domain.Pr
 		Material:    in.Material,
 		Color:       in.Color,
 		Size:        in.Size,
+		CategoryID:  in.CategoryID,
 	}
 
 	created, err := s.repo.Create(ctx, product)
@@ -155,6 +163,7 @@ type UpdateInput struct {
 	Material     string
 	Color        string
 	Size         string
+	CategoryID   *string
 }
 
 // Update updates a product (ownership enforced by the repository)
@@ -175,6 +184,11 @@ func (s *ProductService) Update(ctx context.Context, in UpdateInput) (*domain.Pr
 	if !domain.IsValidCondition(in.Condition) {
 		return nil, domain.ErrInvalidInput
 	}
+	if in.CategoryID != nil {
+		if _, err := s.repo.GetCategory(ctx, *in.CategoryID); err != nil {
+			return nil, err
+		}
+	}
 
 	product := domain.Product{
 		ID:          in.ID,
@@ -191,6 +205,7 @@ func (s *ProductService) Update(ctx context.Context, in UpdateInput) (*domain.Pr
 		Material:    in.Material,
 		Color:       in.Color,
 		Size:        in.Size,
+		CategoryID:  in.CategoryID,
 	}
 
 	updated, err := s.repo.Update(ctx, product)

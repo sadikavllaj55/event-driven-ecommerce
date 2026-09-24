@@ -31,6 +31,7 @@ type Product struct {
 	Material    string         `json:"material"`
 	Color       string         `json:"color"`
 	Size        string         `json:"size"`
+	CategoryID  *string        `json:"category_id"`
 	ImageURL    string         `json:"image_url"`
 	Images      []ProductImage `json:"images"`
 	CreatedAt   time.Time      `json:"created_at"`
