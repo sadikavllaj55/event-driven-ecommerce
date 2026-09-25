@@ -59,12 +59,15 @@ func main() {
 	// Category tree (admin-managed)
 	categorySvc := service.NewCategoryService(repo)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
+	settingsSvc := service.NewSettingsService(repo)
+	settingsHandler := handler.NewSettingsHandler(settingsSvc)
 
 	// --- HTTP server ---
 	mux := http.NewServeMux()
 	productHandler.RegisterRoutes(mux)
 	productHandler.RegisterFavoriteRoutes(mux)
 	categoryHandler.RegisterRoutes(mux)
+	settingsHandler.RegisterRoutes(mux)
 
 	port := ":" + cfg.Port
 	log.Printf("Product Service running on %s", port)

@@ -261,6 +261,21 @@ app.delete(
   injectUserId,
   gateway(PRODUCT_SERVICE_URL),
 );
+// Admin settings (admin-only)
+app.get(
+  '/admin/settings',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.put(
+  '/admin/settings/:key',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
 
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);

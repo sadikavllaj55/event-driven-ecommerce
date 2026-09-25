@@ -35,6 +35,11 @@ type ProductRepository interface {
 	AddFavorite(ctx context.Context, userID, productID string) error
 	RemoveFavorite(ctx context.Context, userID, productID string) error
 	ListFavorites(ctx context.Context, userID string) ([]domain.Product, error)
+
+	// Settings
+	GetSetting(ctx context.Context, key string) (string, error)
+	ListSettings(ctx context.Context) ([]domain.Setting, error)
+	UpsertSetting(ctx context.Context, key, value string) (*domain.Setting, error)
 }
 
 // PostgresProductRepository is the concrete Postgres implementation

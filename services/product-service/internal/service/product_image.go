@@ -26,7 +26,8 @@ func (s *ProductService) AddProductImage(
 	if err != nil {
 		return nil, err
 	}
-	if count >= domain.MaxImagesPerProduct {
+	maxImages := GetIntSetting(ctx, s.repo, domain.SettingMaxImagesPerProduct, domain.MaxImagesPerProduct)
+	if count >= maxImages {
 		return nil, domain.ErrMaxImagesReached
 	}
 

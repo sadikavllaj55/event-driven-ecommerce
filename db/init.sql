@@ -117,6 +117,20 @@ CREATE TABLE IF NOT EXISTS favorites (
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
 
+
+-- Admin-configurable settings (key-value)
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Seed default settings
+INSERT INTO settings (key, value) VALUES
+    ('max_images_per_product', '5')
+ON CONFLICT (key) DO NOTHING;
+
+
 CREATE TABLE IF NOT EXISTS product_images (
     id UUID PRIMARY KEY,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
