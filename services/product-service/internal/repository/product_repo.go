@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -29,6 +30,11 @@ type ProductRepository interface {
 	DeleteImage(ctx context.Context, imageID, productID string) error
 	GetProductSeller(ctx context.Context, productID string) (string, error)
 	GetCategory(ctx context.Context, id string) (*domain.Category, error)
+
+	// Favorites
+	AddFavorite(ctx context.Context, userID, productID string) error
+	RemoveFavorite(ctx context.Context, userID, productID string) error
+	ListFavorites(ctx context.Context, userID string) ([]domain.Product, error)
 }
 
 // PostgresProductRepository is the concrete Postgres implementation
@@ -44,6 +50,21 @@ func NewPostgresProductRepository(pool *pgxpool.Pool) *PostgresProductRepository
 // It MUST match the scan order in scanProduct.
 const productColumns = `id, seller_id, name, description, price_cents, stock, image_url,
 	gender, brand, model_code, condition, material, color, size, category_id, status, created_at`
+
+// prefixedProductColumns returns the product columns prefixed with a table alias
+// (for JOIN queries where column names could be ambiguous)
+func prefixedProductColumns(alias string) string {
+	cols := []string{
+		"id", "seller_id", "name", "description", "price_cents", "stock", "image_url",
+		"gender", "brand", "model_code", "condition", "material", "color", "size",
+		"category_id", "status", "created_at",
+	}
+	prefixed := make([]string, len(cols))
+	for i, c := range cols {
+		prefixed[i] = alias + "." + c
+	}
+	return strings.Join(prefixed, ", ")
+}
 
 // rowScanner is satisfied by both pgx.Row and pgx.Rows
 type rowScanner interface {

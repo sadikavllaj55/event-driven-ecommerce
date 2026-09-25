@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS products (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Favorites / wishlist (composite PK prevents duplicates)
+CREATE TABLE IF NOT EXISTS favorites (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, product_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
+
 CREATE TABLE IF NOT EXISTS product_images (
     id UUID PRIMARY KEY,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,

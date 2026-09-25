@@ -186,6 +186,21 @@ app.delete(
   injectUserId,
   gateway(PRODUCT_SERVICE_URL),
 );
+// Favorites / wishlist (authenticated — buyer identity via X-User-ID)
+app.get('/favorites', authenticate, injectUserId, gateway(PRODUCT_SERVICE_URL));
+app.post(
+  '/favorites/:productId',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+app.delete(
+  '/favorites/:productId',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+
 // 2FA setup/enable (authenticated — identity via X-User-ID)
 app.post('/2fa/setup', authenticate, injectUserId, gateway(USER_SERVICE_URL));
 app.post('/2fa/enable', authenticate, injectUserId, gateway(USER_SERVICE_URL));

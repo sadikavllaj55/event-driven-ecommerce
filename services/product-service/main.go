@@ -63,6 +63,7 @@ func main() {
 	// --- HTTP server ---
 	mux := http.NewServeMux()
 	productHandler.RegisterRoutes(mux)
+	productHandler.RegisterFavoriteRoutes(mux)
 	categoryHandler.RegisterRoutes(mux)
 
 	port := ":" + cfg.Port

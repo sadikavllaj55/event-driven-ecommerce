@@ -50,6 +50,8 @@ var (
 	ErrInvalidInput     = errors.New("invalid product input")
 	ErrMaxImagesReached = errors.New("maximum images per product reached")
 	ErrInvalidStatus    = errors.New("status must be 'active' or 'inactive'")
+	ErrAlreadyFavorited = errors.New("product already in favorites")
+	ErrNotFavorited     = errors.New("product not in favorites")
 )
 
 // Valid gender values
