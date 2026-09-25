@@ -25,6 +25,7 @@ func (h *SettingsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/settings", h.list)
 	mux.HandleFunc("PUT /admin/settings/{key}", h.update)
 	mux.HandleFunc("GET /admin/stats", h.stats)
+	mux.HandleFunc("GET /seller/stats", h.sellerStats)
 }
 
 func (h *SettingsHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +61,21 @@ func (h *SettingsHandler) stats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.svc.ProductStats(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch stats")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}
+
+func (h *SettingsHandler) sellerStats(w http.ResponseWriter, r *http.Request) {
+	sellerID := r.Header.Get("X-User-ID")
+	if sellerID == "" {
+		writeError(w, http.StatusBadRequest, "missing seller identity")
+		return
+	}
+
+	stats, err := h.svc.SellerStats(r.Context(), sellerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch seller stats")
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)

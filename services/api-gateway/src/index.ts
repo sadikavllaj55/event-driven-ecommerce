@@ -165,6 +165,14 @@ app.get('/categories', gateway(PRODUCT_SERVICE_URL));
 // ---------- PROTECTED routes (require JWT) ----------
 // Products (seller — identity via X-User-ID)
 app.post('/products', authenticate, injectUserId, gateway(PRODUCT_SERVICE_URL));
+// Seller's own stats dashboard (authenticated)
+app.get(
+  '/seller/stats',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+
 // Seller's own products (authenticated — includes their inactive listings)
 
 app.put(

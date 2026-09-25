@@ -42,6 +42,8 @@ type ProductRepository interface {
 	UpsertSetting(ctx context.Context, key, value string) (*domain.Setting, error)
 
 	CountProducts(ctx context.Context) (map[string]int, error)
+	CountSellerProducts(ctx context.Context, sellerID string) (map[string]int, error)
+	CountFavoritesReceived(ctx context.Context, sellerID string) (int, error)
 }
 
 // PostgresProductRepository is the concrete Postgres implementation
@@ -260,4 +262,44 @@ func (r *PostgresProductRepository) CountProducts(ctx context.Context) (map[stri
 		stats[status] = count
 	}
 	return stats, rows.Err()
+}
+
+// CountSellerProducts returns a seller's listing counts by status (excludes deleted)
+func (r *PostgresProductRepository) CountSellerProducts(ctx context.Context, sellerID string) (map[string]int, error) {
+	stats := map[string]int{"total": 0, "active": 0, "inactive": 0}
+
+	rows, err := r.pool.Query(ctx,
+		`SELECT status, COUNT(*) FROM products
+		 WHERE seller_id = $1 AND status != 'deleted'
+		 GROUP BY status`,
+		sellerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		stats["total"] += count
+		stats[status] = count
+	}
+	return stats, rows.Err()
+}
+
+// CountFavoritesReceived returns how many times a seller's products have been favorited
+func (r *PostgresProductRepository) CountFavoritesReceived(ctx context.Context, sellerID string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		 FROM favorites f
+		 JOIN products p ON p.id = f.product_id
+		 WHERE p.seller_id = $1`,
+		sellerID,
+	).Scan(&count)
+	return count, err
 }

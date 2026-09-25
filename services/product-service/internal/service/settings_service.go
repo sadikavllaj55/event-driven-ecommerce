@@ -48,3 +48,19 @@ func GetIntSetting(ctx context.Context, repo repository.ProductRepository, key s
 func (s *SettingsService) ProductStats(ctx context.Context) (map[string]int, error) {
 	return s.repo.CountProducts(ctx)
 }
+
+// SellerStats returns a seller's own listings + favorites-received stats
+func (s *SettingsService) SellerStats(ctx context.Context, sellerID string) (map[string]any, error) {
+	listings, err := s.repo.CountSellerProducts(ctx, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	favorites, err := s.repo.CountFavoritesReceived(ctx, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"listings":           listings,
+		"favorites_received": favorites,
+	}, nil
+}
