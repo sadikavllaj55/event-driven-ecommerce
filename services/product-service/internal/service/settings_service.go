@@ -43,3 +43,8 @@ func GetIntSetting(ctx context.Context, repo repository.ProductRepository, key s
 	}
 	return n
 }
+
+// ProductStats returns product counts (for admin dashboard)
+func (s *SettingsService) ProductStats(ctx context.Context) (map[string]int, error) {
+	return s.repo.CountProducts(ctx)
+}

@@ -115,3 +115,8 @@ func (s *OrderService) GetOrder(ctx context.Context, orderID, buyerID string) (*
 
 	return order, nil
 }
+
+// Stats returns order counts + revenue (for admin dashboard)
+func (s *OrderService) Stats(ctx context.Context) (map[string]int, error) {
+	return s.repo.CountOrders(ctx)
+}

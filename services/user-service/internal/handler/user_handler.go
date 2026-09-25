@@ -207,7 +207,6 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "status must be 'active' or 'banned'")
 	case errors.Is(err, domain.ErrCannotSelfModify):
 		writeError(w, http.StatusForbidden, "admins cannot modify their own account")
-
 	default:
 		log.Printf("Unexpected error: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")

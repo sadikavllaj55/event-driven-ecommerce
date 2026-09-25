@@ -18,6 +18,7 @@ type OrderRepository interface {
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
 	GetOrdersByBuyer(ctx context.Context, buyerID string) ([]domain.Order, error)
 	GetOrderByID(ctx context.Context, orderID string) (*domain.Order, error)
+	CountOrders(ctx context.Context) (map[string]int, error)
 }
 
 // PostgresOrderRepository is the concrete Postgres implementation
@@ -160,4 +161,43 @@ func (r *PostgresOrderRepository) getItems(ctx context.Context, orderID string) 
 		items = append(items, it)
 	}
 	return items, rows.Err()
+}
+
+// CountOrders returns order counts + revenue (for admin dashboard)
+func (r *PostgresOrderRepository) CountOrders(ctx context.Context) (map[string]int, error) {
+	stats := map[string]int{"total": 0, "paid": 0, "revenue_cents": 0}
+
+	// Total + paid counts
+	rows, err := r.pool.Query(ctx, `SELECT status, COUNT(*) FROM orders GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		stats["total"] += count
+		if status == "paid" {
+			stats["paid"] = count
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Revenue: sum of paid orders' totals
+	var revenue int
+	err = r.pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(total_cents), 0) FROM orders WHERE status = 'paid'`,
+	).Scan(&revenue)
+	if err != nil {
+		return nil, err
+	}
+	stats["revenue_cents"] = revenue
+
+	return stats, nil
 }

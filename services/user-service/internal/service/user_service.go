@@ -224,3 +224,8 @@ func (s *UserService) SetUserRole(ctx context.Context, adminID, targetID, role s
 	}
 	return s.repo.UpdateRole(ctx, targetID, role)
 }
+
+// Stats returns user counts (for admin dashboard)
+func (s *UserService) Stats(ctx context.Context) (map[string]int, error) {
+	return s.repo.CountUsers(ctx)
+}

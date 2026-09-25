@@ -22,6 +22,7 @@ type UserRepository interface {
 	ListUsers(ctx context.Context) ([]domain.User, error)
 	UpdateStatus(ctx context.Context, userID, status string) error
 	UpdateRole(ctx context.Context, userID, role string) error
+	CountUsers(ctx context.Context) (map[string]int, error)
 }
 
 // PostgresUserRepository is the concrete Postgres implementation
@@ -177,4 +178,44 @@ func (r *PostgresUserRepository) UpdateRole(ctx context.Context, userID, role st
 		return domain.ErrUserNotFound
 	}
 	return nil
+}
+
+// CountUsers returns user counts by role + banned count
+func (r *PostgresUserRepository) CountUsers(ctx context.Context) (map[string]int, error) {
+	stats := map[string]int{"total": 0, "buyers": 0, "sellers": 0, "admins": 0, "banned": 0}
+
+	rows, err := r.pool.Query(ctx, `SELECT role, COUNT(*) FROM users GROUP BY role`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var role string
+		var count int
+		if err := rows.Scan(&role, &count); err != nil {
+			return nil, err
+		}
+		stats["total"] += count
+		switch role {
+		case "buyer":
+			stats["buyers"] = count
+		case "seller":
+			stats["sellers"] = count
+		case "admin":
+			stats["admins"] = count
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Banned count
+	var banned int
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE status = 'banned'`).Scan(&banned); err != nil {
+		return nil, err
+	}
+	stats["banned"] = banned
+
+	return stats, nil
 }

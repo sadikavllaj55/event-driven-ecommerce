@@ -227,19 +227,36 @@ app.use('/cart', authenticate, injectUserId, gateway(CART_SERVICE_URL));
 app.use('/orders', authenticate, injectUserId, gateway(ORDER_SERVICE_URL));
 
 // ---------- Admin ----------
+// Admin dashboard — aggregates stats from all services (API composition pattern)
 app.get(
   '/admin/stats',
   authenticate,
   requireRole('admin'),
-  (req: Request, res: Response) => {
-    const user = (req as AuthedRequest).user!;
-    res.json({
-      message: 'Welcome to the admin dashboard',
-      accessed_by: user.sub,
-      role: user.role,
-    });
+  async (_req: Request, res: Response) => {
+    try {
+      // Fetch from all three services in parallel
+      const [usersRes, productsRes, ordersRes] = await Promise.all([
+        fetch(`${USER_SERVICE_URL}/admin/stats`),
+        fetch(`${PRODUCT_SERVICE_URL}/admin/stats`),
+        fetch(`${ORDER_SERVICE_URL}/admin/stats`),
+      ]);
+
+      const users = await usersRes.json();
+      const products = await productsRes.json();
+      const orders = await ordersRes.json();
+
+      // Add a formatted revenue string
+      const revenueCents = orders.revenue_cents ?? 0;
+      orders.revenue = (revenueCents / 100).toFixed(2);
+
+      res.json({ users, products, orders });
+    } catch (err) {
+      console.error('Failed to aggregate admin stats:', err);
+      res.status(502).json({ error: 'failed to fetch dashboard stats' });
+    }
   },
 );
+
 app.post(
   '/admin/categories',
   authenticate,

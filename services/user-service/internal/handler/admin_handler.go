@@ -11,6 +11,8 @@ func (h *UserHandler) RegisterAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/users", h.listUsers)
 	mux.HandleFunc("PATCH /admin/users/{id}/status", h.updateUserStatus)
 	mux.HandleFunc("PATCH /admin/users/{id}/role", h.updateUserRole)
+	mux.HandleFunc("GET /admin/stats", h.stats)
+
 }
 
 func (h *UserHandler) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -67,4 +69,13 @@ func (h *UserHandler) updateUserRole(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Admin %s set user %s role to %s", adminID, targetID, req.Role)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "user role updated"})
+}
+
+func (h *UserHandler) stats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.svc.Stats(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch stats")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }

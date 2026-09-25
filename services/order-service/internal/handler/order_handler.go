@@ -40,6 +40,7 @@ func (h *OrderHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /orders", h.createOrder)
 	mux.HandleFunc("GET /orders", h.listOrders)
 	mux.HandleFunc("GET /orders/{id}", h.getOrder)
+	mux.HandleFunc("GET /admin/stats", h.stats)
 }
 
 func (h *OrderHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -138,4 +139,13 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func (h *OrderHandler) stats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.svc.Stats(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch stats")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }

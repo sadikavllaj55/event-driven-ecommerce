@@ -24,6 +24,7 @@ type settingRequest struct {
 func (h *SettingsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/settings", h.list)
 	mux.HandleFunc("PUT /admin/settings/{key}", h.update)
+	mux.HandleFunc("GET /admin/stats", h.stats)
 }
 
 func (h *SettingsHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -53,4 +54,13 @@ func (h *SettingsHandler) update(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Setting updated: %s = %s", setting.Key, setting.Value)
 	writeJSON(w, http.StatusOK, setting)
+}
+
+func (h *SettingsHandler) stats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.svc.ProductStats(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch stats")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }
