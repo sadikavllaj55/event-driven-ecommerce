@@ -192,6 +192,9 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - http.cors.enabled=true
+      - http.cors.allow-origin=/.*/
+      - http.cors.allow-headers=X-Requested-With,Content-Type,Content-Length,Authorization
     ports:
       - "9200:9200"
     volumes:
@@ -201,6 +204,34 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+
+  # --- Dev tools (database/cache/search GUIs) ---
+
+  adminer:
+    image: adminer:latest
+    container_name: ecommerce-adminer
+    ports:
+      - "8090:8080"
+    depends_on:
+      - postgres
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ecommerce-redis-commander
+    ports:
+      - "8091:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+
+  elasticvue:
+    image: cars10/elasticvue:latest
+    container_name: ecommerce-elasticvue
+    ports:
+      - "8092:8080"
+    depends_on:
+      - elasticsearch
 
 volumes:
   postgres_data:
