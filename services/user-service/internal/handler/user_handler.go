@@ -40,7 +40,6 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /login", h.login)
 	mux.HandleFunc("GET /users/{id}", h.getUser)
 	mux.HandleFunc("GET /verify", h.verify)
-
 	// 2FA
 	mux.HandleFunc("POST /2fa/setup", h.setup2FA)
 	mux.HandleFunc("POST /2fa/enable", h.enable2FA)
@@ -202,6 +201,13 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "2FA is not enabled")
 	case errors.Is(err, domain.Err2FAAlreadyEnabled):
 		writeError(w, http.StatusConflict, "2FA is already enabled")
+	case errors.Is(err, domain.ErrUserBanned):
+		writeError(w, http.StatusForbidden, "account is banned")
+	case errors.Is(err, domain.ErrInvalidStatus):
+		writeError(w, http.StatusBadRequest, "status must be 'active' or 'banned'")
+	case errors.Is(err, domain.ErrCannotSelfModify):
+		writeError(w, http.StatusForbidden, "admins cannot modify their own account")
+
 	default:
 		log.Printf("Unexpected error: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")

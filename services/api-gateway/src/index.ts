@@ -276,6 +276,28 @@ app.put(
   injectUserId,
   gateway(PRODUCT_SERVICE_URL),
 );
+// Admin user management (admin-only)
+app.get(
+  '/admin/users',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(USER_SERVICE_URL),
+);
+app.patch(
+  '/admin/users/:id/status',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(USER_SERVICE_URL),
+);
+app.patch(
+  '/admin/users/:id/role',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(USER_SERVICE_URL),
+);
 
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);

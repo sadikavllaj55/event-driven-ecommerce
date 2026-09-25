@@ -113,6 +113,9 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*domai
 	if !user.Verified {
 		return nil, domain.ErrEmailNotVerified
 	}
+	if user.Status == domain.UserStatusBanned {
+		return nil, domain.ErrUserBanned
+	}
 
 	// If 2FA is enabled, signal that a code is required (don't return the user yet)
 	if user.TOTPEnabled {
@@ -193,4 +196,31 @@ func (s *UserService) Verify2FALogin(ctx context.Context, email, code string) (*
 		return nil, domain.ErrInvalid2FACode
 	}
 	return user, nil
+}
+
+// ListUsers returns all users (admin)
+func (s *UserService) ListUsers(ctx context.Context) ([]domain.User, error) {
+	return s.repo.ListUsers(ctx)
+}
+
+// SetUserStatus bans/reactivates a user. Admins can't modify themselves.
+func (s *UserService) SetUserStatus(ctx context.Context, adminID, targetID, status string) error {
+	if !domain.IsValidUserStatus(status) {
+		return domain.ErrInvalidStatus
+	}
+	if adminID == targetID {
+		return domain.ErrCannotSelfModify
+	}
+	return s.repo.UpdateStatus(ctx, targetID, status)
+}
+
+// SetUserRole changes a user's role. Admins can't change their own role.
+func (s *UserService) SetUserRole(ctx context.Context, adminID, targetID, role string) error {
+	if !domain.IsValidRole(role) {
+		return domain.ErrInvalidRole
+	}
+	if adminID == targetID {
+		return domain.ErrCannotSelfModify
+	}
+	return s.repo.UpdateRole(ctx, targetID, role)
 }

@@ -12,6 +12,7 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Name         string    `json:"name"`
 	Role         string    `json:"role"`
+	Status       string    `json:"status"`
 	Verified     bool      `json:"verified"`
 	TOTPSecret   string    `json:"-"` // never expose the secret
 	TOTPEnabled  bool      `json:"totp_enabled"`
@@ -24,6 +25,30 @@ const (
 	RoleSeller = "seller"
 	RoleAdmin  = "admin"
 )
+
+// User status values
+const (
+	UserStatusActive = "active"
+	UserStatusBanned = "banned"
+)
+
+var validUserStatuses = map[string]bool{
+	UserStatusActive: true,
+	UserStatusBanned: true,
+}
+
+func IsValidUserStatus(s string) bool {
+	return validUserStatuses[s]
+}
+
+// Valid roles (for admin role changes)
+var validRoles = map[string]bool{
+	"buyer": true, "seller": true, "admin": true,
+}
+
+func IsValidRole(r string) bool {
+	return validRoles[r]
+}
 
 // Domain errors
 var (
@@ -39,6 +64,9 @@ var (
 	ErrInvalid2FACode     = errors.New("invalid 2FA code")
 	Err2FANotEnabled      = errors.New("2FA is not enabled")
 	Err2FAAlreadyEnabled  = errors.New("2FA is already enabled")
+	ErrUserBanned         = errors.New("account is banned")
+	ErrInvalidStatus      = errors.New("status must be 'active' or 'banned'")
+	ErrCannotSelfModify   = errors.New("admins cannot modify their own account")
 )
 
 // IsValidRegistrationRole checks a role is allowed at registration (not admin)

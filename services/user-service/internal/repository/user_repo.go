@@ -19,6 +19,9 @@ type UserRepository interface {
 	VerifyByToken(ctx context.Context, token string) error
 	SetTOTPSecret(ctx context.Context, userID, secret string) error
 	EnableTOTP(ctx context.Context, userID string) error
+	ListUsers(ctx context.Context) ([]domain.User, error)
+	UpdateStatus(ctx context.Context, userID, status string) error
+	UpdateRole(ctx context.Context, userID, role string) error
 }
 
 // PostgresUserRepository is the concrete Postgres implementation
@@ -50,14 +53,15 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User, v
 // GetByEmail looks up a user by email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	return r.getUser(ctx,
-		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, created_at
+		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, status, created_at
 		 FROM users WHERE email = $1`, email)
+
 }
 
 // GetByID looks up a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	return r.getUser(ctx,
-		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, created_at
+		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, status, created_at
 		 FROM users WHERE id = $1`, id)
 }
 
@@ -67,8 +71,9 @@ func (r *PostgresUserRepository) getUser(ctx context.Context, query, arg string)
 	var totpSecret *string // nullable in DB
 	err := r.pool.QueryRow(ctx, query, arg).Scan(
 		&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Verified,
-		&totpSecret, &u.TOTPEnabled, &u.CreatedAt,
+		&totpSecret, &u.TOTPEnabled, &u.Status, &u.CreatedAt,
 	)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrUserNotFound
 	}
@@ -122,4 +127,54 @@ func (r *PostgresUserRepository) EnableTOTP(ctx context.Context, userID string) 
 		userID,
 	)
 	return err
+}
+
+// ListUsers returns all users (newest first)
+func (r *PostgresUserRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, email, name, role, verified, status, created_at
+		 FROM users ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := []domain.User{}
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.Verified, &u.Status, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// UpdateStatus sets a user's status (active/banned)
+func (r *PostgresUserRepository) UpdateStatus(ctx context.Context, userID, status string) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE users SET status = $1 WHERE id = $2`, status, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
+// UpdateRole sets a user's role
+func (r *PostgresUserRepository) UpdateRole(ctx context.Context, userID, role string) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE users SET role = $1 WHERE id = $2`, role, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }

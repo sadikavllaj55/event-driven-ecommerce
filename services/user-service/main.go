@@ -42,6 +42,7 @@ func main() {
 	// --- HTTP server ---
 	mux := http.NewServeMux()
 	userHandler.RegisterRoutes(mux)
+	userHandler.RegisterAdminRoutes(mux)
 
 	port := ":" + cfg.Port
 	log.Printf("User Service running on %s", port)

@@ -42,6 +42,12 @@ BEGIN
         CREATE TYPE user_role AS ENUM ('buyer', 'seller', 'admin');
     END IF;
 END$$;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
+        CREATE TYPE user_status AS ENUM ('active', 'banned');
+    END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
@@ -53,6 +59,7 @@ CREATE TABLE IF NOT EXISTS users (
     verification_token TEXT,
     totp_secret TEXT,
     totp_enabled BOOLEAN NOT NULL DEFAULT false,
+    status user_status NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
