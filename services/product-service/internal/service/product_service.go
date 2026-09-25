@@ -120,6 +120,21 @@ func (s *ProductService) List(ctx context.Context) ([]domain.Product, error) {
 	return products, nil
 }
 
+// ListMine returns a seller's own products (active + inactive) with display prices
+func (s *ProductService) ListMine(ctx context.Context, sellerID string) ([]domain.Product, error) {
+	if sellerID == "" {
+		return nil, domain.ErrInvalidInput
+	}
+	products, err := s.repo.ListBySeller(ctx, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range products {
+		products[i].SetDisplayPrice()
+	}
+	return products, nil
+}
+
 // Get returns a single product with display price set
 func (s *ProductService) Get(ctx context.Context, id string) (*domain.Product, error) {
 	product, err := s.repo.GetByID(ctx, id)

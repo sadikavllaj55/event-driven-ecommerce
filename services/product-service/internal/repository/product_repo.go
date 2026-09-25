@@ -15,6 +15,7 @@ import (
 type ProductRepository interface {
 	Create(ctx context.Context, p domain.Product) (*domain.Product, error)
 	List(ctx context.Context) ([]domain.Product, error)
+	ListBySeller(ctx context.Context, sellerID string) ([]domain.Product, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
 	UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error)
@@ -184,4 +185,29 @@ func (r *PostgresProductRepository) UpdateStatus(ctx context.Context, id, seller
 		return nil, domain.ErrProductNotFound
 	}
 	return r.GetByID(ctx, id)
+}
+
+// ListBySeller returns a seller's own products (active + inactive, excludes deleted)
+func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID string) ([]domain.Product, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+productColumns+`
+		 FROM products
+		 WHERE seller_id = $1 AND status != 'deleted'
+		 ORDER BY created_at DESC`,
+		sellerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := []domain.Product{}
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
 }

@@ -69,6 +69,7 @@ func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /products/search", h.search)
 	mux.HandleFunc("GET /products/{id}", h.get)
 	mux.HandleFunc("POST /products", h.create)
+	mux.HandleFunc("GET /products/mine", h.listMine)
 	mux.HandleFunc("PUT /products/{id}", h.update)
 	mux.HandleFunc("DELETE /products/{id}", h.delete)
 	mux.HandleFunc("PATCH /products/{id}/status", h.updateStatus)
@@ -119,6 +120,20 @@ func (h *ProductHandler) list(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to list products: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to list products")
+		return
+	}
+	writeJSON(w, http.StatusOK, products)
+}
+
+func (h *ProductHandler) listMine(w http.ResponseWriter, r *http.Request) {
+	sellerID := sellerFromHeader(w, r)
+	if sellerID == "" {
+		return
+	}
+
+	products, err := h.svc.ListMine(r.Context(), sellerID)
+	if err != nil {
+		writeProductError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, products)

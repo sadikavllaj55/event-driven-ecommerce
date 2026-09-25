@@ -152,6 +152,12 @@ app.post('/login/2fa', express.json(), async (req: Request, res: Response) => {
 // ---------- PUBLIC routes ----------
 app.post('/register', gateway(USER_SERVICE_URL));
 app.get('/products/search', gateway(PRODUCT_SERVICE_URL));
+app.get(
+  '/products/mine',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 app.get('/categories', gateway(PRODUCT_SERVICE_URL));
@@ -159,6 +165,8 @@ app.get('/categories', gateway(PRODUCT_SERVICE_URL));
 // ---------- PROTECTED routes (require JWT) ----------
 // Products (seller — identity via X-User-ID)
 app.post('/products', authenticate, injectUserId, gateway(PRODUCT_SERVICE_URL));
+// Seller's own products (authenticated — includes their inactive listings)
+
 app.put(
   '/products/:id',
   authenticate,
