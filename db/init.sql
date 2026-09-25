@@ -70,6 +70,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'item_condition') THEN
         CREATE TYPE item_condition AS ENUM ('new_with_tags', 'new_without_tags', 'very_good', 'good', 'satisfactory');
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_status') THEN
+        CREATE TYPE product_status AS ENUM ('active', 'inactive', 'deleted');
+    END IF;
 END$$;
 
 -- Categories (self-referencing tree, admin-managed)
@@ -100,6 +103,7 @@ CREATE TABLE IF NOT EXISTS products (
     color TEXT NOT NULL DEFAULT '',
     size TEXT NOT NULL DEFAULT '',
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    status product_status NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

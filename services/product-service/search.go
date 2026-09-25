@@ -85,6 +85,17 @@ func (s *Search) IndexProduct(p domain.Product) error {
 	return nil
 }
 
+// DeleteProduct removes a product from the search index
+func (s *Search) DeleteProduct(productID string) error {
+	res, err := s.client.Delete(indexName, productID,
+		s.client.Delete.WithContext(context.Background()))
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	return nil
+}
+
 // SearchProducts runs a full-text search with optional filters
 func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, error) {
 	// Build the "must" clause (full-text search)

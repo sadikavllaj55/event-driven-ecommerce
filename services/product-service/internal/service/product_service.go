@@ -34,6 +34,7 @@ type SearchFilters struct {
 type ProductSearch interface {
 	IndexProduct(p domain.Product) error
 	SearchProducts(f SearchFilters) ([]map[string]any, error)
+	DeleteProduct(productID string) error
 }
 
 // UserNameResolver fetches a user's display name by ID
@@ -134,10 +135,39 @@ func (s *ProductService) Delete(ctx context.Context, id, sellerID string) error 
 	if sellerID == "" {
 		return domain.ErrInvalidInput
 	}
-	return s.repo.Delete(ctx, id, sellerID)
+	if err := s.repo.Delete(ctx, id, sellerID); err != nil {
+		return err
+	}
+	// Remove from search index (best-effort)
+	_ = s.search.DeleteProduct(id)
+	return nil
 }
 
 // Search runs a full-text product search via Elasticsearch
 func (s *ProductService) Search(ctx context.Context, f SearchFilters) ([]map[string]any, error) {
 	return s.search.SearchProducts(f)
+}
+
+// SetStatus changes a product's status (active/inactive) — ownership enforced.
+// Re-indexes or de-indexes in search depending on the new status.
+func (s *ProductService) SetStatus(ctx context.Context, id, sellerID, status string) (*domain.Product, error) {
+	if !domain.IsValidStatusChange(status) {
+		return nil, domain.ErrInvalidStatus
+	}
+
+	product, err := s.repo.UpdateStatus(ctx, id, sellerID, status)
+	if err != nil {
+		return nil, err
+	}
+
+	// Keep the search index in sync: active = searchable, inactive = removed
+	if status == domain.StatusActive {
+		product.SellerName = s.users.GetUserName(product.SellerID)
+		_ = s.search.IndexProduct(*product)
+	} else {
+		_ = s.search.DeleteProduct(id)
+	}
+
+	product.SetDisplayPrice()
+	return product, nil
 }

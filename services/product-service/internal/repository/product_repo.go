@@ -18,6 +18,7 @@ type ProductRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
 	UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error)
+	UpdateStatus(ctx context.Context, id, sellerID, status string) (*domain.Product, error)
 	Delete(ctx context.Context, id, sellerID string) error
 
 	// Image gallery
@@ -41,7 +42,7 @@ func NewPostgresProductRepository(pool *pgxpool.Pool) *PostgresProductRepository
 // productColumns is the single source of truth for product SELECT column order.
 // It MUST match the scan order in scanProduct.
 const productColumns = `id, seller_id, name, description, price_cents, stock, image_url,
-	gender, brand, model_code, condition, material, color, size, category_id, created_at`
+	gender, brand, model_code, condition, material, color, size, category_id, status, created_at`
 
 // rowScanner is satisfied by both pgx.Row and pgx.Rows
 type rowScanner interface {
@@ -54,7 +55,7 @@ func scanProduct(row rowScanner) (domain.Product, error) {
 	err := row.Scan(
 		&p.ID, &p.SellerID, &p.Name, &p.Description, &p.PriceCents, &p.Stock, &p.ImageURL,
 		&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
-		&p.CategoryID, &p.CreatedAt,
+		&p.CategoryID, &p.Status, &p.CreatedAt,
 	)
 	return p, err
 }
@@ -80,7 +81,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 // List returns all products (newest first)
 func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT `+productColumns+` FROM products ORDER BY created_at DESC`,
+		`SELECT `+productColumns+` FROM products WHERE status = 'active' ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -155,10 +156,10 @@ func (r *PostgresProductRepository) UpdateImageURL(ctx context.Context, id, sell
 	return r.GetByID(ctx, id)
 }
 
-// Delete removes a product ONLY if it belongs to the given seller
+// Delete soft-deletes a product (status='deleted'), ONLY if owned by the seller
 func (r *PostgresProductRepository) Delete(ctx context.Context, id, sellerID string) error {
 	tag, err := r.pool.Exec(ctx,
-		`DELETE FROM products WHERE id = $1 AND seller_id = $2`,
+		`UPDATE products SET status = 'deleted' WHERE id = $1 AND seller_id = $2 AND status != 'deleted'`,
 		id, sellerID,
 	)
 	if err != nil {
@@ -168,4 +169,19 @@ func (r *PostgresProductRepository) Delete(ctx context.Context, id, sellerID str
 		return domain.ErrProductNotFound
 	}
 	return nil
+}
+
+// UpdateStatus changes a product's status (active/inactive), ONLY if owned by the seller
+func (r *PostgresProductRepository) UpdateStatus(ctx context.Context, id, sellerID, status string) (*domain.Product, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE products SET status = $1 WHERE id = $2 AND seller_id = $3 AND status != 'deleted'`,
+		status, id, sellerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, domain.ErrProductNotFound
+	}
+	return r.GetByID(ctx, id)
 }

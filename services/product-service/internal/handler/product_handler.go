@@ -37,6 +37,9 @@ type productRequest struct {
 	Size        string  `json:"size"`
 	CategoryID  *string `json:"category_id"`
 }
+type statusRequest struct {
+	Status string `json:"status"`
+}
 
 // toProductInput maps an HTTP request to the service input (shared by create/update)
 func (req productRequest) toProductInput(id, sellerID string) service.ProductInput {
@@ -68,6 +71,7 @@ func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /products", h.create)
 	mux.HandleFunc("PUT /products/{id}", h.update)
 	mux.HandleFunc("DELETE /products/{id}", h.delete)
+	mux.HandleFunc("PATCH /products/{id}/status", h.updateStatus)
 	// Image gallery
 	mux.HandleFunc("POST /products/{id}/images", h.uploadImage)
 	mux.HandleFunc("GET /products/{id}/images", h.listImages)
@@ -174,6 +178,27 @@ func (h *ProductHandler) update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, product)
 }
 
+func (h *ProductHandler) updateStatus(w http.ResponseWriter, r *http.Request) {
+	sellerID := sellerFromHeader(w, r)
+	if sellerID == "" {
+		return
+	}
+
+	var req statusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	product, err := h.svc.SetStatus(r.Context(), r.PathValue("id"), sellerID, req.Status)
+	if err != nil {
+		writeProductError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, product)
+}
+
 func (h *ProductHandler) delete(w http.ResponseWriter, r *http.Request) {
 	sellerID := sellerFromHeader(w, r)
 	if sellerID == "" {
@@ -209,6 +234,8 @@ func writeProductError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "category not found")
 	case errors.Is(err, domain.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "invalid product input")
+	case errors.Is(err, domain.ErrInvalidStatus):
+		writeError(w, http.StatusBadRequest, "status must be 'active' or 'inactive'")
 	default:
 		log.Printf("Unexpected error: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")

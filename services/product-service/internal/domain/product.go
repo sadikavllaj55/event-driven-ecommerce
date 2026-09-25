@@ -33,6 +33,7 @@ type Product struct {
 	Color       string         `json:"color"`
 	Size        string         `json:"size"`
 	CategoryID  *string        `json:"category_id"`
+	Status      string         `json:"status"`
 	ImageURL    string         `json:"image_url"`
 	Images      []ProductImage `json:"images"`
 	CreatedAt   time.Time      `json:"created_at"`
@@ -48,6 +49,7 @@ var (
 	ErrProductNotFound  = errors.New("product not found")
 	ErrInvalidInput     = errors.New("invalid product input")
 	ErrMaxImagesReached = errors.New("maximum images per product reached")
+	ErrInvalidStatus    = errors.New("status must be 'active' or 'inactive'")
 )
 
 // Valid gender values
@@ -69,6 +71,24 @@ func IsValidGender(g string) bool {
 // IsValidCondition checks if a condition value is allowed
 func IsValidCondition(c string) bool {
 	return validConditions[c]
+}
+
+// Product status values
+const (
+	StatusActive   = "active"
+	StatusInactive = "inactive"
+	StatusDeleted  = "deleted"
+)
+
+var validStatuses = map[string]bool{
+	StatusActive:   true,
+	StatusInactive: true,
+}
+
+// IsValidStatusChange checks if a status is one a seller can set
+// (sellers can set active/inactive, but NOT 'deleted' — that's via DELETE)
+func IsValidStatusChange(s string) bool {
+	return validStatuses[s]
 }
 
 // MaxImagesPerProduct is the limit (Phase 1: hardcoded; Phase 2: admin-configurable)

@@ -165,6 +165,13 @@ app.put(
   injectUserId,
   gateway(PRODUCT_SERVICE_URL),
 );
+app.patch(
+  '/products/:id/status',
+  authenticate,
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
+
 app.delete(
   '/products/:id',
   authenticate,
