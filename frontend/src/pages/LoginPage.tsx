@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ROUTES } from '../constants/routes';
 
 type Mode = 'login' | 'register';
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
       // Login
       const res = await api.post('/login', { email, password });
       login(res.data.token);
-      navigate('/');
+      navigate(ROUTES.home);
     } catch (err: any) {
       // 428 = 2FA required
       if (err.response?.status === 428) {

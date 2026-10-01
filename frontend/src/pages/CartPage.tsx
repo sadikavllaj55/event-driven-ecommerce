@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../cart/useCart';
+import { ROUTES } from '../constants/routes';
 
 export default function CartPage() {
   const { cartQuery, removeItem, checkout } = useCart();
@@ -24,7 +25,7 @@ export default function CartPage() {
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <p className="text-gray-500">Your cart is empty.</p>
           <Link
-            to="/"
+            to={ROUTES.home}
             className="inline-block mt-4 text-teal-600 hover:underline"
           >
             Browse items →

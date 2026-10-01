@@ -1,5 +1,6 @@
 import type { Product } from '../types';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -14,7 +15,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      to={`/products/${product.id}`}
+      to={ROUTES.product(product.id)}
       className="block bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
     >
       <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer">

@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import type { Product } from '../types';
 import { useCart } from '../cart/useCart';
 import { useAuth } from '../auth/AuthContext';
+import { ROUTES } from '../constants/routes';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -44,7 +45,7 @@ export default function ProductDetailPage() {
 
   return (
     <div>
-      <Link to="/" className="text-sm text-teal-600 hover:underline">
+      <Link to={ROUTES.home} className="text-sm text-teal-600 hover:underline">
         ← Back to browse
       </Link>
 
@@ -112,7 +113,7 @@ export default function ProductDetailPage() {
           <button
             onClick={() => {
               if (!user) {
-                navigate('/login');
+                navigate(ROUTES.login);
                 return;
               }
               addItem.mutate(

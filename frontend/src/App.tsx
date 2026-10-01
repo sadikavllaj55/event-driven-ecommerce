@@ -5,6 +5,8 @@ import LoginPage from './pages/LoginPage';
 import { useAuth } from './auth/AuthContext';
 import VerifyPage from './pages/VerifyPage';
 import CartPage from './pages/CartPage';
+import OrdersPage from './pages/OrdersPage';
+import { ROUTES } from './constants/routes';
 
 function App() {
   const { user, logout } = useAuth();
@@ -14,20 +16,31 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold text-teal-600">
+          <Link to={ROUTES.home} className="text-2xl font-bold text-teal-600">
             Marketplace 🛍️
           </Link>
+
           <div className="flex items-center gap-4 text-sm">
             {user ? (
               <>
-                <Link to="/cart" className="text-teal-600 hover:underline">
+                <Link
+                  to={ROUTES.cart}
+                  className="text-teal-600 hover:underline"
+                >
                   Cart 🛒
                 </Link>
+                <Link
+                  to={ROUTES.orders}
+                  className="text-teal-600 hover:underline"
+                >
+                  Orders 📦
+                </Link>
+
                 <span className="text-gray-600">Hi, {user.email}</span>
                 <button
                   onClick={() => {
                     logout();
-                    navigate('/');
+                    navigate(ROUTES.home);
                   }}
                   className="text-teal-600 hover:underline"
                 >
@@ -35,7 +48,7 @@ function App() {
                 </button>
               </>
             ) : (
-              <Link to="/login" className="text-teal-600 hover:underline">
+              <Link to={ROUTES.login} className="text-teal-600 hover:underline">
                 Log in
               </Link>
             )}
@@ -45,11 +58,12 @@ function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-6">
         <Routes>
-          <Route path="/" element={<ProductsPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify" element={<VerifyPage />} />
-          <Route path="/cart" element={<CartPage />} />
+          <Route path={ROUTES.home} element={<ProductsPage />} />
+          <Route path={ROUTES.productDetail} element={<ProductDetailPage />} />
+          <Route path={ROUTES.login} element={<LoginPage />} />
+          <Route path={ROUTES.verify} element={<VerifyPage />} />
+          <Route path={ROUTES.cart} element={<CartPage />} />
+          <Route path={ROUTES.orders} element={<OrdersPage />} />
         </Routes>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, Route } from 'react-router-dom';
 import { api } from '../api/client';
+import { ROUTES } from '../constants/routes';
 
 export default function VerifyPage() {
   const [params] = useSearchParams();
@@ -27,7 +28,7 @@ export default function VerifyPage() {
           <h1 className="text-xl font-bold text-gray-900">Email verified!</h1>
           <p className="text-gray-600 mt-2">Your account is ready.</p>
           <Link
-            to="/login"
+            to={ROUTES.login}
             className="inline-block mt-6 bg-teal-600 text-white px-6 py-2 rounded-full font-medium hover:bg-teal-700"
           >
             Log in
