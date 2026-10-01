@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../cart/useCart';
 import { ROUTES } from '../constants/routes';
+import toast from 'react-hot-toast';
 
 export default function CartPage() {
   const { cartQuery, removeItem, checkout } = useCart();
@@ -92,7 +93,15 @@ export default function CartPage() {
             <button
               onClick={() =>
                 checkout.mutate(undefined, {
-                  onSuccess: (data) => setOrderResult(data),
+                  onSuccess: (data) => {
+                    setOrderResult(data);
+                    if (data.status === 'paid') {
+                      toast.success('Order placed & paid! 🎉');
+                    } else {
+                      toast('Order placed — processing…', { icon: '⏳' });
+                    }
+                  },
+                  onError: () => toast.error('Checkout failed'),
                 })
               }
               disabled={checkout.isPending}

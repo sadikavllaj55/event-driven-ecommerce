@@ -7,6 +7,7 @@ import { useCart } from '../cart/useCart';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import FavoriteButton from '../components/FavoriteButton';
+import toast from 'react-hot-toast';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -124,10 +125,8 @@ export default function ProductDetailPage() {
               addItem.mutate(
                 { productId: product.id, quantity: 1 },
                 {
-                  onSuccess: () => {
-                    setAdded(true);
-                    setTimeout(() => setAdded(false), 2000);
-                  },
+                  onSuccess: () => toast.success('Added to cart 🛒'),
+                  onError: () => toast.error('Could not add to cart'),
                 },
               );
             }}
