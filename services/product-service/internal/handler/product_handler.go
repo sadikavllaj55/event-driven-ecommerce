@@ -116,13 +116,26 @@ func atoiOrZero(s string) int {
 }
 
 func (h *ProductHandler) list(w http.ResponseWriter, r *http.Request) {
-	products, err := h.svc.List(r.Context())
+	q := r.URL.Query()
+	page := atoiOrDefault(q.Get("page"), 1)
+	limit := atoiOrDefault(q.Get("limit"), 20)
+
+	result, err := h.svc.List(r.Context(), page, limit)
 	if err != nil {
 		log.Printf("Failed to list products: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to list products")
 		return
 	}
-	writeJSON(w, http.StatusOK, products)
+	writeJSON(w, http.StatusOK, result)
+}
+
+// atoiOrDefault converts a string to int, returning a default if empty/invalid
+func atoiOrDefault(s string, def int) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return def
+	}
+	return n
 }
 
 func (h *ProductHandler) listMine(w http.ResponseWriter, r *http.Request) {

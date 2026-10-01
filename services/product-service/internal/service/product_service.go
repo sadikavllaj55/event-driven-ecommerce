@@ -51,6 +51,14 @@ type ProductService struct {
 	users     UserNameResolver
 }
 
+// PagedProducts is a paginated product response
+type PagedProducts struct {
+	Products []domain.Product `json:"products"`
+	Total    int              `json:"total"`
+	Page     int              `json:"page"`
+	Limit    int              `json:"limit"`
+}
+
 func NewProductService(
 	repo repository.ProductRepository,
 	publisher EventPublisher,
@@ -108,16 +116,31 @@ func (s *ProductService) afterCreate(p *domain.Product) {
 	_ = s.search.IndexProduct(*p)
 }
 
-// List returns all products with display prices set
-func (s *ProductService) List(ctx context.Context) ([]domain.Product, error) {
-	products, err := s.repo.List(ctx)
+// List returns a page of products with pagination metadata
+func (s *ProductService) List(ctx context.Context, page, limit int) (*PagedProducts, error) {
+	// Sensible defaults + guards
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20 // default page size, capped at 100
+	}
+	offset := (page - 1) * limit
+
+	products, total, err := s.repo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	for i := range products {
 		products[i].SetDisplayPrice()
 	}
-	return products, nil
+
+	return &PagedProducts{
+		Products: products,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+	}, nil
 }
 
 // ListMine returns a seller's own products (active + inactive) with display prices

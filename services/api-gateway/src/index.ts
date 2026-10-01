@@ -7,6 +7,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { requestLogger } from './middleware/logger.ts';
 import { rateLimiter } from './middleware/rateLimiter.ts';
 import { requireRole } from './middleware/rbac.ts';
+import cors from 'cors';
 
 // ---------- Config ----------
 const PORT = process.env.PORT ?? '8080';
@@ -33,6 +34,12 @@ interface AuthedRequest extends Request {
 // ---------- App + global middleware ----------
 const app = express();
 app.use(helmet());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+    credentials: true,
+  }),
+);
 app.use(requestLogger);
 app.use(rateLimiter);
 

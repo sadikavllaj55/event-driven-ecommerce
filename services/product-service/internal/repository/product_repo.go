@@ -15,7 +15,7 @@ import (
 // ProductRepository defines the data-access contract
 type ProductRepository interface {
 	Create(ctx context.Context, p domain.Product) (*domain.Product, error)
-	List(ctx context.Context) ([]domain.Product, error)
+	List(ctx context.Context, limit, offset int) ([]domain.Product, int, error)
 	ListBySeller(ctx context.Context, sellerID string) ([]domain.Product, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
@@ -109,13 +109,25 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 	return r.GetByID(ctx, p.ID)
 }
 
-// List returns all products (newest first)
-func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product, error) {
+// List returns a page of active products + the total count (for pagination)
+func (r *PostgresProductRepository) List(ctx context.Context, limit, offset int) ([]domain.Product, int, error) {
+	// Total count (for the frontend to know how many pages exist)
+	var total int
+	if err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM products WHERE status = 'active'`,
+	).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := r.pool.Query(ctx,
-		`SELECT `+productColumns+` FROM products WHERE status = 'active' ORDER BY created_at DESC`,
+		`SELECT `+productColumns+`
+		 FROM products WHERE status = 'active'
+		 ORDER BY created_at DESC
+		 LIMIT $1 OFFSET $2`,
+		limit, offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -123,11 +135,11 @@ func (r *PostgresProductRepository) List(ctx context.Context) ([]domain.Product,
 	for rows.Next() {
 		p, err := scanProduct(rows)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		products = append(products, p)
 	}
-	return products, rows.Err()
+	return products, total, rows.Err()
 }
 
 // GetByID returns a single product with its image gallery
