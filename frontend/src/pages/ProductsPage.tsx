@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import type { PagedProducts, Product } from '../types';
 import ProductCard from '../components/ProductCard';
 import { useDebounce } from '../hooks/useDebounce';
+import ProductCardSkeleton from '../components/ProductCardSkeleton';
 
 const LIMIT = 12;
 
@@ -59,7 +60,14 @@ export default function ProductsPage() {
         {isSearching ? `Results for "${debouncedSearch}"` : 'Browse items'}
       </h1>
 
-      {isLoading && <p className="text-gray-500">Loading…</p>}
+      {isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {Array.from({ length: LIMIT }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
       {isError && <p className="text-red-500">Failed to load products.</p>}
       {data && data.products.length === 0 && (
         <p className="text-gray-500">No items found.</p>

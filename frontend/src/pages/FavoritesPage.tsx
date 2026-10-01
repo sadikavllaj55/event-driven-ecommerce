@@ -2,13 +2,20 @@ import { Link } from 'react-router-dom';
 import { useFavorites } from '../hooks/useFavorites';
 import ProductCard from '../components/ProductCard';
 import { ROUTES } from '../constants/routes';
+import ProductCardSkeleton from '../components/ProductCardSkeleton';
 
 export default function FavoritesPage() {
   const { favoritesQuery } = useFavorites();
   const favorites = favoritesQuery.data ?? [];
 
   if (favoritesQuery.isLoading)
-    return <p className="text-gray-500">Loading…</p>;
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
+    );
 
   return (
     <div>
