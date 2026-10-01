@@ -8,6 +8,10 @@ import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage';
 import { ROUTES } from './constants/routes';
 import FavoritesPage from './pages/FavoritesPage';
+import AboutPage from './pages/static/AboutPage';
+import TermsPage from './pages/static/TermsPage';
+import PrivacyPage from './pages/static/PrivacyPage';
+import FaqPage from './pages/static/FaqPage';
 
 function App() {
   return (
@@ -21,6 +25,10 @@ function App() {
         <Route path={ROUTES.cart} element={<CartPage />} />
         <Route path={ROUTES.orders} element={<OrdersPage />} />
         <Route path={ROUTES.favorites} element={<FavoritesPage />} />
+        <Route path={ROUTES.about} element={<AboutPage />} />
+        <Route path={ROUTES.terms} element={<TermsPage />} />
+        <Route path={ROUTES.privacy} element={<PrivacyPage />} />
+        <Route path={ROUTES.faq} element={<FaqPage />} />
       </Route>
     </Routes>
   );

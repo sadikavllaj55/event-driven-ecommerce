@@ -1,13 +1,14 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
+import Footer from './Footer';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to={ROUTES.home} className="text-2xl font-bold text-teal-600">
@@ -54,10 +55,11 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Pages render here */}
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 w-full flex-1">
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 }

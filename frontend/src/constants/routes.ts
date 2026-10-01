@@ -11,4 +11,10 @@ export const ROUTES = {
   favorites: '/favorites',
   productDetail: '/products/:id',
   product: (id: string) => `/products/${id}`,
+
+  // Static pages
+  about: '/about',
+  terms: '/terms',
+  privacy: '/privacy',
+  faq: '/faq',
 } as const;
