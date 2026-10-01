@@ -1,5 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import ProductsPage from './pages/ProductsPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <main className="max-w-6xl mx-auto px-4 py-6">
         <Routes>
           <Route path="/" element={<ProductsPage />} />
+          <Route path="/products/:id" element={<ProductDetailPage />} />
         </Routes>
       </main>
     </div>
