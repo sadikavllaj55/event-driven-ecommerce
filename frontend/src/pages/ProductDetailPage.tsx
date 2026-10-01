@@ -6,6 +6,7 @@ import type { Product } from '../types';
 import { useCart } from '../cart/useCart';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
+import FavoriteButton from '../components/FavoriteButton';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -87,7 +88,11 @@ export default function ProductDetailPage() {
 
         {/* Details */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+            <FavoriteButton productId={product.id} />
+          </div>
+
           <p className="text-3xl font-bold text-gray-900 mt-2">
             €{product.price}
           </p>

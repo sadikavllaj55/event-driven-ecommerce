@@ -17,6 +17,12 @@ export default function Layout() {
             {user ? (
               <>
                 <Link
+                  to={ROUTES.favorites}
+                  className="text-teal-600 hover:underline"
+                >
+                  Favorites ❤️
+                </Link>
+                <Link
                   to={ROUTES.cart}
                   className="text-teal-600 hover:underline"
                 >

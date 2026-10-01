@@ -8,8 +8,7 @@ export const ROUTES = {
   verify: '/verify',
   cart: '/cart',
   orders: '/orders',
-
-  // Product detail
-  productDetail: '/products/:id', // route pattern
-  product: (id: string) => `/products/${id}`, // link builder
+  favorites: '/favorites',
+  productDetail: '/products/:id',
+  product: (id: string) => `/products/${id}`,
 } as const;

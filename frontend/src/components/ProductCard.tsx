@@ -1,6 +1,7 @@
 import type { Product } from '../types';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
+import FavoriteButton from './FavoriteButton';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -20,17 +21,21 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer">
         {/* Image */}
-        <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+        <div className="relative aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
           {image ? (
             <img
               src={image}
               alt={product.name}
-              loading="lazy" /* scalability: lazy-load images */
+              loading="lazy"
               className="w-full h-full object-cover"
             />
           ) : (
             <span className="text-gray-300 text-5xl">🛍️</span>
           )}
+          {/* Favorite heart overlay */}
+          <div className="absolute top-2 right-2 bg-white/80 rounded-full w-9 h-9 flex items-center justify-center shadow-sm">
+            <FavoriteButton productId={product.id} />
+          </div>
         </div>
 
         {/* Info */}

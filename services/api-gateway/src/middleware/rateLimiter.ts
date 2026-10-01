@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 
 // Configuration
-const WINDOW_MS = 10_000; // 10 second window
-const MAX_REQUESTS = 5; // max requests per window per IP
+const WINDOW_MS = 60_000; // 10 second window
+const MAX_REQUESTS = 100; // max requests per window per IP
 
 // In-memory store: IP -> list of request timestamps
 const requests = new Map<string, number[]>();

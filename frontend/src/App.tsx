@@ -7,6 +7,7 @@ import VerifyPage from './pages/VerifyPage';
 import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage';
 import { ROUTES } from './constants/routes';
+import FavoritesPage from './pages/FavoritesPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path={ROUTES.verify} element={<VerifyPage />} />
         <Route path={ROUTES.cart} element={<CartPage />} />
         <Route path={ROUTES.orders} element={<OrdersPage />} />
+        <Route path={ROUTES.favorites} element={<FavoritesPage />} />
       </Route>
     </Routes>
   );
