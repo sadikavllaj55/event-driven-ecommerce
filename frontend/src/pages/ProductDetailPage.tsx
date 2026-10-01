@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Product } from '../types';
+import { useCart } from '../cart/useCart';
+import { useAuth } from '../auth/AuthContext';
 
 const conditionLabels: Record<string, string> = {
   new_with_tags: 'New with tags',
@@ -27,6 +29,11 @@ export default function ProductDetailPage() {
       return res.data;
     },
   });
+
+  const { addItem } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [added, setAdded] = useState(false);
 
   if (isLoading) return <p className="text-gray-500">Loading…</p>;
   if (isError || !product)
@@ -102,8 +109,30 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <button className="mt-8 w-full bg-teal-600 text-white py-3 rounded-full font-medium hover:bg-teal-700 transition-colors">
-            Add to cart 🛒
+          <button
+            onClick={() => {
+              if (!user) {
+                navigate('/login');
+                return;
+              }
+              addItem.mutate(
+                { productId: product.id, quantity: 1 },
+                {
+                  onSuccess: () => {
+                    setAdded(true);
+                    setTimeout(() => setAdded(false), 2000);
+                  },
+                },
+              );
+            }}
+            disabled={addItem.isPending}
+            className="mt-8 w-full bg-teal-600 text-white py-3 rounded-full font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
+          >
+            {addItem.isPending
+              ? 'Adding…'
+              : added
+                ? 'Added ✓'
+                : 'Add to cart 🛒'}
           </button>
         </div>
       </div>
