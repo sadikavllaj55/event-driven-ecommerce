@@ -133,11 +133,7 @@ export default function ProductDetailPage() {
             disabled={addItem.isPending}
             className="mt-8 w-full bg-teal-600 text-white py-3 rounded-full font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
           >
-            {addItem.isPending
-              ? 'Adding…'
-              : added
-                ? 'Added ✓'
-                : 'Add to cart 🛒'}
+            {addItem.isPending ? 'Adding…' : 'Add to cart 🛒'}
           </button>
         </div>
       </div>

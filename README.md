@@ -1,24 +1,24 @@
-# Event-Driven E-Commerce Marketplace (Microservices)
+# Event-Driven E-Commerce Marketplace (Full-Stack Microservices)
 
-A **Vinted-style second-hand marketplace backend** built with **microservices**, **event-driven architecture**, and the **Saga pattern** with compensating transactions. Sellers list unique items (with brand, size, condition, images), buyers browse, search, favorite, and check out — all through a secured API gateway.
+A **Vinted-style second-hand marketplace** with a **React frontend** and an **event-driven microservices backend**, featuring the **Saga pattern** with compensating transactions. Sellers list unique items (brand, size, condition, images), buyers browse, search, favorite, and check out — all through a polished UI backed by a secured API gateway.
 
-Built with **Go**, **TypeScript**, **RabbitMQ**, **PostgreSQL**, **Redis**, **Elasticsearch**, and **MinIO** — fully containerized and started with a single command.
+Built with **React + TypeScript** (frontend) and **Go**, **TypeScript**, **RabbitMQ**, **PostgreSQL**, **Redis**, **Elasticsearch**, and **MinIO** (backend) — fully containerized.
 
 ---
 
 ## Overview
 
-This system models a real second-hand marketplace end-to-end, with **no manual setup**:
+A real second-hand marketplace, end-to-end, with **no manual setup**:
 
 - Users register as buyers or sellers with **email verification** and optional **2FA (TOTP)**
 - Sellers create listings with rich attributes (brand, size, color, condition, model code), **multiple images**, and **categories**; stock auto-registers via events
-- Sellers manage their inventory: view their own listings, **pause/reactivate** items, and **soft-delete**
-- Buyers **browse, search (typo-tolerant, filtered)**, **favorite** items, add to a cart, and check out
+- Sellers manage inventory: view their own listings, **pause/reactivate**, **soft-delete**
+- Buyers **browse, search (typo-tolerant, filtered)**, **favorite** items, add to cart, and check out
 - Checkout triggers a distributed **Saga** across services, with **compensating transactions** on failure
-- Admins manage a **dynamic category tree** at runtime
-- All traffic flows through a secured **API Gateway** (JWT, RBAC, rate limiting)
+- Admins manage a **dynamic category tree**, **runtime settings**, **users** (ban/roles), and view **platform analytics**
+- A **React SPA** consumes everything through a secured API gateway
 
-Everything runs with: `docker compose up --build`
+Backend: `docker compose up --build` · Frontend: `cd frontend && npm run dev`
 
 ---
 
@@ -26,7 +26,7 @@ Everything runs with: `docker compose up --build`
 
 ```mermaid
 flowchart TD
-    Client([Client]) -->|JWT-secured| Gateway[API Gateway<br/>TypeScript]
+    UI[React SPA<br/>Vite + TS + Tailwind] -->|JWT-secured| Gateway[API Gateway<br/>TypeScript]
 
     Gateway --> User[User Service<br/>Go]
     Gateway --> Product[Product Service<br/>Go]
@@ -63,16 +63,17 @@ flowchart TD
 
 ## Services
 
-| Service              | Language   | Port | Responsibility                                                                     |
-| -------------------- | ---------- | ---- | ---------------------------------------------------------------------------------- |
-| API Gateway          | TypeScript | 8080 | Single entry point, JWT auth, RBAC, rate limiting, routing (http-proxy-middleware) |
-| User Service         | Go         | 8082 | Registration, login, roles, email verification, **2FA (TOTP)**                     |
-| Product Service      | Go         | 8083 | Listings, attributes, images, categories, search, favorites, status                |
-| Cart Service         | Go         | 8084 | Shopping cart (Redis), price-safe checkout                                         |
-| Order Service        | Go         | 8081 | Multi-item orders, saga orchestration, order history                               |
-| Inventory Service    | Go         | —    | Atomic stock reservation, compensation, stock registration                         |
-| Payment Service      | TypeScript | —    | Payment processing (simulated)                                                     |
-| Notification Service | TypeScript | —    | Verification emails + order notifications                                          |
+| Service              | Language   | Port | Responsibility                                                                       |
+| -------------------- | ---------- | ---- | ------------------------------------------------------------------------------------ |
+| Frontend             | React/TS   | 5173 | Buyer UI (browse, search, cart, checkout, favorites, orders, auth)                   |
+| API Gateway          | TypeScript | 8080 | Entry point, JWT auth, RBAC, rate limiting, routing, API composition                 |
+| User Service         | Go         | 8082 | Registration, login, roles, email verification, **2FA (TOTP)**, admin user mgmt      |
+| Product Service      | Go         | 8083 | Listings, attributes, images, categories, search, favorites, status, settings, stats |
+| Cart Service         | Go         | 8084 | Shopping cart (Redis), price-safe checkout                                           |
+| Order Service        | Go         | 8081 | Multi-item orders, saga orchestration, order history, stats                          |
+| Inventory Service    | Go         | —    | Atomic stock reservation, compensation, stock registration                           |
+| Payment Service      | TypeScript | —    | Payment processing (simulated)                                                       |
+| Notification Service | TypeScript | —    | Verification emails + order notifications                                            |
 
 The five core Go services (User, Product, Cart, Order, Inventory) follow a **clean layered architecture** (domain / repository / service / handler) with dependency injection and interface-based abstractions.
 
@@ -80,15 +81,51 @@ The five core Go services (User, Product, Cart, Order, Inventory) follow a **cle
 
 ## Infrastructure & Datastores (polyglot persistence)
 
-| Technology        | Purpose                                                                 |
-| ----------------- | ----------------------------------------------------------------------- |
-| **PostgreSQL**    | Relational data (users, products, orders, categories, favorites, stock) |
-| **Redis**         | Shopping carts (7-day TTL)                                              |
-| **RabbitMQ**      | Event messaging (topic exchange, DLQ)                                   |
-| **Elasticsearch** | Full-text product search (typo-tolerant, filtered)                      |
-| **MinIO**         | S3-compatible object storage (product images)                           |
+| Technology        | Purpose                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- |
+| **PostgreSQL**    | Relational data (users, products, orders, categories, favorites, settings, stock) |
+| **Redis**         | Shopping carts (7-day TTL)                                                        |
+| **RabbitMQ**      | Event messaging (topic exchange, DLQ)                                             |
+| **Elasticsearch** | Full-text product search (typo-tolerant, filtered)                                |
+| **MinIO**         | S3-compatible object storage (product images)                                     |
 
-Each datastore is used for what it's best at — a deliberate polyglot-persistence design.
+---
+
+## Frontend
+
+A **React single-page app** (Vite + TypeScript + Tailwind CSS) consuming the API gateway.
+
+### Features
+
+- **Browse** products in a responsive grid (paginated, lazy-loaded images)
+- **Search** with debounced input → typo-tolerant Elasticsearch results
+- **Product detail** with image gallery and full attributes
+- **Favorites** ❤️ with optimistic updates + wishlist page
+- **Cart & checkout** → triggers the full backend saga, with live order status
+- **Order history** with color-coded statuses
+- **Auth** — register, email verification, login, and **2FA (TOTP)**
+- Polished UI — condition badges, hover effects, loading skeletons, toast notifications
+
+### Engineering / scalability patterns
+
+- **Pagination** — never loads the full catalog at once
+- **TanStack Query** — caching, request deduplication, background refetching
+- **Debounced search** — avoids an API call per keystroke
+- **Lazy-loaded images** — load as they scroll into view
+- **Optimistic UI** — instant feedback for favorites (reverts on error)
+- **Auto-logout on 401** — clean handling of expired tokens
+- **Static build** — deployable to any CDN
+- **Clean architecture** — shared `Layout` (via `<Outlet />`), centralized route constants, organized folders
+
+### Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev     # http://localhost:5173
+```
+
+(The gateway has CORS enabled for the frontend origin.)
 
 ---
 
@@ -98,7 +135,7 @@ Each listing is a **unique second-hand item** with:
 
 - Core: name, description, price, stock
 - Attributes: **brand, model code, gender** (women/men/unisex/kids), **condition** (new with tags → satisfactory), **material, color, size**
-- **Multiple images** (gallery, stored in MinIO, max configurable)
+- **Multiple images** (gallery, stored in MinIO, max configurable by admin)
 - **Category** (from a dynamic nested tree)
 - **Status**: `active` / `inactive` (paused) / `deleted` (soft delete)
 
@@ -108,15 +145,14 @@ Prices are stored as integer cents internally (no float errors), accepted as dol
 
 ## Key Flows
 
-### Seller onboarding & listing
+### Seller
 
 ```
-Register (seller) → verify email → login (JWT)
-  → create listing (brand, size, condition, price...)
+Register (seller) → verify email → login
+  → create listing (brand, size, condition, price, images, category)
      → stock auto-registers in Inventory (via product.created event)
-  → upload images (MinIO)
-  → assign a category
   → manage: view own listings, pause/reactivate, soft-delete
+  → view stats (listings + favorites received)
 ```
 
 ### Buyer purchase (the Saga)
@@ -138,13 +174,11 @@ Register → verify → login (optional 2FA)
 
 ## Search (Elasticsearch)
 
-- **Full-text** search across product name, description, and **seller name** (find an influencer's shop)
+- **Full-text** across product name, description, and **seller name** (find a seller's shop)
 - **Typo-tolerant** (fuzzy matching — "hodie" finds "hoodie")
 - **Relevance ranking** (name weighted higher than description)
 - **Faceted filters**: category, brand, condition, gender, price range
-- Products auto-index on creation; de-index when paused/deleted, re-index when reactivated
-
-Example:
+- Auto-indexed on creation; de-indexed when paused/deleted, re-indexed when reactivated
 
 ```
 GET /products/search?q=jumper&brand=Zara&condition=very_good&gender=women&max_price=5000
@@ -154,25 +188,36 @@ GET /products/search?q=jumper&brand=Zara&condition=very_good&gender=women&max_pr
 
 ## Security
 
-Layered defense, all at the gateway:
+Layered defense at the gateway:
 
 ```
-Helmet → Rate limiter → JWT auth → RBAC/ownership → proxy (with X-User-ID identity header)
+CORS → Helmet → Rate limiter → JWT auth → RBAC/ownership → proxy (with X-User-ID identity header)
 ```
 
 - **JWT authentication** — gateway verifies credentials via the User Service, issues signed JWTs (bcrypt-hashed passwords)
-- **Two-factor authentication (TOTP)** — compatible with Google Authenticator; password login returns `428` when 2FA is enabled, completed with a time-based code
+- **Two-factor authentication (TOTP)** — Google Authenticator compatible; password login returns `428` when 2FA is enabled, completed with a time-based code
 - **Email verification** — unverified users can't log in
 - **Token-based identity** — `buyer_id`/`seller_id` come from the verified JWT via an `X-User-ID` header, never from the request body
 - **Ownership authorization** — sellers can only modify their own products (enforced in SQL)
 - **Price-tampering protection** — the cart fetches real prices from the Product Service; client prices are ignored
-- **RBAC** — buyer / seller / admin roles (PostgreSQL ENUM)
+- **RBAC** — buyer / seller / admin roles; admin endpoints gated; self-lockout prevention
+- **User banning** — banned users blocked at login
+
+---
+
+## Admin Suite
+
+- **Dynamic category tree** — nested categories managed at runtime (adjacency list, cycle prevention, delete protection)
+- **Runtime settings** — e.g. `max_images_per_product` configurable without redeploy
+- **User management** — list users, ban/reactivate, change roles (with self-lockout prevention)
+- **Analytics dashboard** — platform-wide stats aggregated across services (**API composition pattern**): users by role, products by status, orders + revenue
+- **Seller stats** — per-seller listings + favorites-received engagement
 
 ---
 
 ## Messaging Design (RabbitMQ)
 
-A single topic exchange (`orders`) routes all events. Failed messages route to a **dead-letter queue** instead of being lost.
+A single topic exchange (`orders`) routes all events. Failed messages route to a **dead-letter queue**.
 
 | Event               | Published by | Consumed by                                   |
 | ------------------- | ------------ | --------------------------------------------- |
@@ -191,24 +236,33 @@ A single topic exchange (`orders`) routes all events. Failed messages route to a
 ### Prerequisites
 
 - Docker & Docker Compose
+- Node.js (for the frontend)
 
-### Run everything
+### Run the backend
 
 ```bash
 docker compose up --build
 ```
 
-Starts all 8 services + PostgreSQL, RabbitMQ, Redis, Elasticsearch, MinIO. Tables auto-create on first run.
+Starts all backend services + PostgreSQL, RabbitMQ, Redis, Elasticsearch, MinIO, and dev-tool GUIs. Tables auto-create on first run.
 
-### Dev tool dashboards
+### Run the frontend
 
-| Tool                | URL                    | Login                                                                          |
-| ------------------- | ---------------------- | ------------------------------------------------------------------------------ |
-| Adminer (Postgres)  | http://localhost:8090  | System: PostgreSQL, Server: `postgres`, User/Pass: `postgres`, DB: `ecommerce` |
-| Redis Commander     | http://localhost:8091  | —                                                                              |
-| Elasticvue (search) | http://localhost:8092  | connect to `http://localhost:9200`                                             |
-| RabbitMQ            | http://localhost:15672 | `guest` / `guest`                                                              |
-| MinIO (images)      | http://localhost:9001  | `minioadmin` / `minioadmin`                                                    |
+```bash
+cd frontend && npm install && npm run dev
+```
+
+### URLs & dev dashboards
+
+| Tool                 | URL                    | Login                                                                          |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------ |
+| **Frontend (React)** | http://localhost:5173  | —                                                                              |
+| API Gateway          | http://localhost:8080  | —                                                                              |
+| Adminer (Postgres)   | http://localhost:8090  | System: PostgreSQL, Server: `postgres`, User/Pass: `postgres`, DB: `ecommerce` |
+| Redis Commander      | http://localhost:8091  | —                                                                              |
+| Elasticvue (search)  | http://localhost:8092  | connect to `http://localhost:9200`                                             |
+| RabbitMQ             | http://localhost:15672 | `guest` / `guest`                                                              |
+| MinIO (images)       | http://localhost:9001  | `minioadmin` / `minioadmin`                                                    |
 
 ---
 
@@ -228,17 +282,17 @@ POST /2fa/enable                Enable 2FA with a code
 ### Products
 
 ```
-GET    /products                       Browse (active only)
-GET    /products/search?q=...&...       Full-text + filtered search
-GET    /products/mine                   Seller's own listings (incl. paused)
-GET    /products/{id}                   Single product
-POST   /products                        Create (seller)
-PUT    /products/{id}                   Update (seller)
-PATCH  /products/{id}/status            Activate / deactivate (seller)
-DELETE /products/{id}                   Soft delete (seller)
-POST   /products/{id}/images            Upload image (seller)
-GET    /products/{id}/images            List images
-DELETE /products/{id}/images/{imgId}    Delete image (seller)
+GET    /products?page=&limit=           Browse (active, paginated)
+GET    /products/search?q=...&...        Full-text + filtered search
+GET    /products/mine                    Seller's own listings (incl. paused)
+GET    /products/{id}                    Single product
+POST   /products                         Create (seller)
+PUT    /products/{id}                     Update (seller)
+PATCH  /products/{id}/status             Activate / deactivate (seller)
+DELETE /products/{id}                    Soft delete (seller)
+POST   /products/{id}/images             Upload image (seller)
+GET    /products/{id}/images             List images
+DELETE /products/{id}/images/{imgId}     Delete image (seller)
 ```
 
 ### Favorites
@@ -267,6 +321,13 @@ GET    /categories                     Browse the category tree (public)
 POST   /admin/categories               Create category (admin)
 PUT    /admin/categories/{id}          Rename/move (admin)
 DELETE /admin/categories/{id}          Delete (admin, blocked if it has children)
+GET    /admin/settings                 List settings (admin)
+PUT    /admin/settings/{key}           Update a setting (admin)
+GET    /admin/users                    List users (admin)
+PATCH  /admin/users/{id}/status        Ban/reactivate (admin)
+PATCH  /admin/users/{id}/role          Change role (admin)
+GET    /admin/stats                    Platform analytics (admin, aggregated)
+GET    /seller/stats                   Seller's own stats
 ```
 
 ---
@@ -282,25 +343,32 @@ cd services/payment-service && npm test          # TypeScript: payment logic
 
 ## Key Patterns & Concepts Demonstrated
 
+**Backend**
+
 - **Microservices** — 8 services, single-responsibility, database-per-service
-- **Clean layered architecture** — domain/repository/service/handler, dependency inversion (5 Go services)
-- **API Gateway** — unified secure entry (http-proxy-middleware) with custom middleware
+- **Clean layered architecture** — domain/repository/service/handler, dependency inversion
+- **API Gateway** — unified secure entry (http-proxy-middleware) + **API composition** (aggregated admin stats)
 - **Event-driven architecture** — decoupled services via RabbitMQ
 - **Saga pattern** — multi-step distributed transaction with orchestration
 - **Compensating transactions** — automatic stock restoration on payment failure
 - **Event-driven data sync** — product creation auto-registers inventory stock
-- **Fan-out / pub-sub** — multiple services react to the same event
-- **Dead-letter queue** — poison messages quarantined
-- **Full-text search** — Elasticsearch with fuzzy matching, relevance ranking, faceted filters
-- **Object storage** — MinIO (S3-compatible) for image galleries
+- **Fan-out / pub-sub**, **dead-letter queue**, durable/persistent messaging
+- **Full-text search** — Elasticsearch (fuzzy, relevance, faceted filters)
+- **Object storage** — MinIO (S3-compatible) image galleries
 - **Polyglot persistence** — PostgreSQL, Redis, RabbitMQ, Elasticsearch, MinIO
-- **Authentication & authorization** — JWT, RBAC, TOTP 2FA, email verification, token-based identity
-- **Security-first design** — price-tampering protection, ownership enforcement
-- **Dynamic configuration** — admin-managed nested category tree (adjacency list, cycle prevention)
+- **AuthN/AuthZ** — JWT, RBAC, TOTP 2FA, email verification, token-based identity, banning
+- **Security-first** — price-tampering protection, ownership enforcement, self-lockout prevention
+- **Dynamic config** — admin-managed category tree + runtime settings
 - **Data lifecycle** — status management + soft delete
 - **Correct money handling** — integer cents internally, decimals at the edges
 - **Cross-language interoperability** — Go and TypeScript via language-agnostic events
-- **Operability** — health checks, graceful shutdown, one-command startup, GUI dev tools
+
+**Frontend**
+
+- **React SPA** consuming the microservices
+- **Scalable patterns** — pagination, query caching (TanStack Query), debounced search, lazy-loaded images, optimistic UI
+- **Clean architecture** — Layout/Outlet, centralized routes, organized folders
+- **Polished UX** — skeletons, toasts, condition badges, auto-logout on 401
 
 ---
 
@@ -308,10 +376,10 @@ cd services/payment-service && npm test          # TypeScript: payment logic
 
 Because services communicate through language-agnostic events, each uses the best-fit tool:
 
-- **Go** — performance/concurrency-heavy core services (User, Product, Cart, Order, Inventory): goroutines, explicit errors, small static binaries.
-- **TypeScript** — the gateway and integration services (Payment, Notification), where the Node ecosystem for web, auth, and SDKs is strongest.
+- **Go** — performance/concurrency-heavy core services (goroutines, explicit errors, small static binaries)
+- **TypeScript** — the gateway, integration services (Payment, Notification), and the React frontend (strong web/UI ecosystem)
 
-This demonstrates a core benefit of event-driven microservices: **the right tool per service, interoperating seamlessly.**
+The right tool per service, interoperating seamlessly.
 
 ---
 
@@ -321,10 +389,19 @@ This demonstrates a core benefit of event-driven microservices: **the right tool
 event-driven-ecommerce/
 ├── docker-compose.yml          # All services + infrastructure + dev tools
 ├── db/init.sql                 # Schema (auto-run on first start)
+├── frontend/                   # React + TS + Tailwind SPA
+│   └── src/
+│       ├── api/                # axios client (JWT interceptor, auto-logout)
+│       ├── auth/               # auth context
+│       ├── cart/               # cart hook
+│       ├── hooks/              # useFavorites, useDebounce
+│       ├── components/         # ProductCard, FavoriteButton, Layout, skeletons
+│       ├── pages/              # Products, ProductDetail, Cart, Orders, Favorites, Login, Verify
+│       └── constants/routes.ts # centralized routes
 ├── services/
 │   ├── api-gateway/            # TypeScript — entry point + security
-│   ├── user-service/           # Go — auth, users, verification, 2FA
-│   ├── product-service/        # Go — listings, images, categories, search, favorites
+│   ├── user-service/           # Go — auth, users, verification, 2FA, admin
+│   ├── product-service/        # Go — listings, images, categories, search, favorites, settings
 │   ├── cart-service/           # Go + Redis — shopping cart
 │   ├── order-service/          # Go — saga orchestration, order history
 │   ├── inventory-service/      # Go — stock, compensation, registration
@@ -337,14 +414,16 @@ event-driven-ecommerce/
 
 ## Status
 
-✅ Fully functional Vinted-style marketplace: seller onboarding & listing management (attributes, images, categories, pause/soft-delete) → buyer browse/search/favorite → cart → purchase saga with compensation → order history — all secured behind a unified API gateway, containerized, with no manual setup.
+✅ Fully functional, full-stack Vinted-style marketplace: React frontend (browse, search, favorites, cart, checkout, orders, auth with 2FA) on an event-driven microservices backend (saga with compensation, Elasticsearch search, MinIO images, dynamic categories, admin suite, analytics) — containerized, with no manual setup.
 
 **Possible future work:**
 
+- Seller listing UI (create/manage from the frontend)
+- Admin dashboard UI
 - Follow sellers / seller profiles
 - Make-an-offer (price negotiation)
-- Admin-configurable settings & moderation
 - Distributed tracing & metrics
+- Real deployment (CDN for frontend, horizontal scaling for services)
 
 ```
 
