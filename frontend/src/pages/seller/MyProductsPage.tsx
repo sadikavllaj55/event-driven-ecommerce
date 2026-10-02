@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { api } from '../../api/client';
+import { productApi } from '../../api/products';
 import { ROUTES } from '../../constants/routes';
-import type { Product } from '../../types';
 
 const statusStyles: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -15,16 +14,13 @@ export default function MyProductsPage() {
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['my-products'],
-    queryFn: async () => {
-      const res = await api.get<Product[]>('/products/mine');
-      return res.data;
-    },
+    queryFn: productApi.listMine,
   });
 
   const setStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      await api.patch(`/products/${id}/status`, { status });
-    },
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      productApi.setStatus(id, status),
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-products'] });
       qc.invalidateQueries({ queryKey: ['products'] }); // browse grid
@@ -35,9 +31,7 @@ export default function MyProductsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/products/${id}`);
-    },
+    mutationFn: (id: string) => productApi.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-products'] });
       qc.invalidateQueries({ queryKey: ['products'] });

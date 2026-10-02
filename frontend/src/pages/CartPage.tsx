@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../cart/useCart';
+import { useCart } from '../hooks/useCart';
 import { ROUTES } from '../constants/routes';
 import toast from 'react-hot-toast';
 

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
+import { AxiosError } from 'axios';
+import { getErrorMessage } from '../utils/errors';
 
 type Mode = 'login' | 'register';
 
@@ -41,14 +43,14 @@ export default function LoginPage() {
       const res = await api.post('/login', { email, password });
       login(res.data.token);
       navigate(ROUTES.home);
-    } catch (err: any) {
+    } catch (err) {
       // 428 = 2FA required
-      if (err.response?.status === 428) {
+      if (err instanceof AxiosError && err.response?.status === 428) {
         setNeeds2FA(true);
         setInfo('Enter your 2FA code from your authenticator app.');
         return;
       }
-      setError(err.response?.data?.error ?? 'Something went wrong');
+      setError(getErrorMessage(err));
     }
   }
 
@@ -59,8 +61,8 @@ export default function LoginPage() {
       const res = await api.post('/login/2fa', { email, code });
       login(res.data.token);
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.error ?? 'Invalid code');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Invalid code'));
     }
   }
 

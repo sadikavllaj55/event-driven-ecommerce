@@ -1,29 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api/client';
-import type { Product } from '../types';
+import { favoriteApi } from '../api/favorites';
 
 export function useFavorites() {
   const qc = useQueryClient();
 
   const favoritesQuery = useQuery({
     queryKey: ['favorites'],
-    queryFn: async () => {
-      const res = await api.get<Product[]>('/favorites');
-      return res.data;
-    },
+    queryFn: favoriteApi.list,
   });
 
   const addFavorite = useMutation({
-    mutationFn: async (productId: string) => {
-      await api.post(`/favorites/${productId}`);
-    },
+    mutationFn: (productId: string) => favoriteApi.add(productId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
   });
 
   const removeFavorite = useMutation({
-    mutationFn: async (productId: string) => {
-      await api.delete(`/favorites/${productId}`);
-    },
+    mutationFn: (productId: string) => favoriteApi.remove(productId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
   });
 

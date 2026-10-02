@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
-import type { PagedProducts, Product } from '../types';
+import { productApi } from '../api/products';
+import type { PagedProducts } from '../types';
 import ProductCard from '../components/ProductCard';
 import { useDebounce } from '../hooks/useDebounce';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
-
-const LIMIT = 12;
+import { PRODUCTS_PER_PAGE } from '../constants/product';
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
@@ -19,26 +18,20 @@ export default function ProductsPage() {
     queryKey: ['products', { page, search: debouncedSearch }],
     queryFn: async () => {
       if (isSearching) {
-        // Elasticsearch search returns an array of products
-        const res = await api.get<Product[]>('/products/search', {
-          params: { q: debouncedSearch },
-        });
+        const products = await productApi.search(debouncedSearch);
         return {
-          products: res.data,
-          total: res.data.length,
+          products,
+          total: products.length,
           page: 1,
-          limit: res.data.length,
+          limit: products.length,
         } as PagedProducts;
       }
-      // Normal paginated browse
-      const res = await api.get<PagedProducts>('/products', {
-        params: { page, limit: LIMIT },
-      });
-      return res.data;
+      return productApi.list(page, PRODUCTS_PER_PAGE);
     },
   });
 
-  const totalPages = data && !isSearching ? Math.ceil(data.total / LIMIT) : 1;
+  const totalPages =
+    data && !isSearching ? Math.ceil(data.total / PRODUCTS_PER_PAGE) : 1;
 
   return (
     <div>
@@ -62,7 +55,7 @@ export default function ProductsPage() {
 
       {isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {Array.from({ length: LIMIT }).map((_, i) => (
+          {Array.from({ length: PRODUCTS_PER_PAGE }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
         </div>

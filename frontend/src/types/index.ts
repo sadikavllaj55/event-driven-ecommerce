@@ -53,3 +53,32 @@ export interface Category {
   parent_id: string | null;
   children: Category[];
 }
+
+// Cart
+export interface CartItem {
+  product_id: string;
+  quantity: number;
+  price_cents: number;
+}
+
+export interface Cart {
+  buyer_id: string;
+  items: CartItem[];
+}
+
+// Order
+export interface OrderItem {
+  product_id: string;
+  quantity: number;
+  price_cents: number;
+  status: string;
+}
+
+export interface Order {
+  id: string;
+  buyer_id: string;
+  status: string;
+  total_cents: number;
+  items: OrderItem[];
+  created_at: string;
+}

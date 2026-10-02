@@ -1,32 +1,23 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { api } from '../../api/client';
+import { productApi } from '../../api/products';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
-import type { Product } from '../../types';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import ImageUploader from '../../components/ImageUploader';
+import { getErrorMessage } from '../../utils/errors';
 
-const CONDITIONS = [
-  { value: 'new_with_tags', label: 'New with tags' },
-  { value: 'new_without_tags', label: 'New without tags' },
-  { value: 'very_good', label: 'Very good' },
-  { value: 'good', label: 'Good' },
-  { value: 'satisfactory', label: 'Satisfactory' },
-];
-
-const GENDERS = [
-  { value: 'women', label: 'Women' },
-  { value: 'men', label: 'Men' },
-  { value: 'unisex', label: 'Unisex' },
-  { value: 'kids', label: 'Kids' },
-];
-const { uploadImages } = useImageUpload();
+import {
+  CONDITIONS,
+  GENDERS,
+  MAX_PRODUCT_IMAGES,
+} from '../../constants/product';
 
 export default function SellPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { uploadImages } = useImageUpload();
 
   const [form, setForm] = useState({
     name: '',
@@ -62,7 +53,7 @@ export default function SellPage() {
     setSubmitting(true);
     try {
       // 1. Create the product
-      const res = await api.post<Product>('/products', {
+      const product = await productApi.create({
         name: form.name,
         description: form.description,
         price: parseFloat(form.price),
@@ -75,15 +66,13 @@ export default function SellPage() {
         gender: form.gender,
       });
 
-      const productId = res.data.id;
-
       // 2. Upload images (if any)
-      await uploadImages(`/products/${productId}/images`, images);
+      await uploadImages(`/products/${product.id}/images`, images);
 
       toast.success('Listing created! 🎉');
       navigate(ROUTES.myProducts);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error ?? 'Failed to create listing');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to create listing'));
     } finally {
       setSubmitting(false);
     }
@@ -201,7 +190,11 @@ export default function SellPage() {
         </div>
 
         <Field label="Photos">
-          <ImageUploader images={images} onChange={setImages} max={7} />
+          <ImageUploader
+            images={images}
+            onChange={setImages}
+            max={MAX_PRODUCT_IMAGES}
+          />
         </Field>
 
         <button

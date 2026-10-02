@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
-import type { Product } from '../types';
-import { useCart } from '../cart/useCart';
+import { productApi } from '../api/products';
+import { useCart } from '../hooks/useCart';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import FavoriteButton from '../components/FavoriteButton';
 import toast from 'react-hot-toast';
-
-const conditionLabels: Record<string, string> = {
-  new_with_tags: 'New with tags',
-  new_without_tags: 'New without tags',
-  very_good: 'Very good',
-  good: 'Good',
-  satisfactory: 'Satisfactory',
-};
+import { CONDITION_LABELS } from '../constants/product';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,16 +19,12 @@ export default function ProductDetailPage() {
     isError,
   } = useQuery({
     queryKey: ['product', id],
-    queryFn: async () => {
-      const res = await api.get<Product>(`/products/${id}`);
-      return res.data;
-    },
+    queryFn: () => productApi.getById(id!),
   });
 
   const { addItem } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [added, setAdded] = useState(false);
 
   if (isLoading) return <p className="text-gray-500">Loading…</p>;
   if (isError || !product)
@@ -103,7 +91,7 @@ export default function ProductDetailPage() {
             <Row label="Size" value={product.size} />
             <Row
               label="Condition"
-              value={conditionLabels[product.condition] ?? product.condition}
+              value={CONDITION_LABELS[product.condition] ?? product.condition}
             />
             <Row label="Color" value={product.color} />
             <Row label="Material" value={product.material} />

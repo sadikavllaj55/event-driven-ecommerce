@@ -2,22 +2,7 @@ import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import { ROUTES } from '../constants/routes';
 import FavoriteButton from './FavoriteButton';
-
-const conditionLabels: Record<string, string> = {
-  new_with_tags: 'New with tags',
-  new_without_tags: 'New without tags',
-  very_good: 'Very good',
-  good: 'Good',
-  satisfactory: 'Satisfactory',
-};
-
-const conditionColors: Record<string, string> = {
-  new_with_tags: 'bg-green-100 text-green-700',
-  new_without_tags: 'bg-emerald-100 text-emerald-700',
-  very_good: 'bg-teal-100 text-teal-700',
-  good: 'bg-blue-100 text-blue-700',
-  satisfactory: 'bg-gray-100 text-gray-600',
-};
+import { CONDITION_LABELS, CONDITION_COLORS } from '../constants/product';
 
 export default function ProductCard({ product }: { product: Product }) {
   const image = product.images?.[0]?.image_url ?? product.image_url;
@@ -47,10 +32,10 @@ export default function ProductCard({ product }: { product: Product }) {
         {product.condition && (
           <span
             className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-              conditionColors[product.condition] ?? 'bg-gray-100 text-gray-600'
+              CONDITION_COLORS[product.condition] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
-            {conditionLabels[product.condition] ?? product.condition}
+            {CONDITION_LABELS[product.condition] ?? product.condition}
           </span>
         )}
       </div>

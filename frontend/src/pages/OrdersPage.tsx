@@ -1,21 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
-
-interface OrderItem {
-  product_id: string;
-  quantity: number;
-  price_cents: number;
-  status: string;
-}
-
-interface Order {
-  id: string;
-  status: string;
-  total_cents: number;
-  items: OrderItem[];
-  created_at: string;
-}
+import { orderApi } from '../api/orders';
 
 const statusStyles: Record<string, string> = {
   paid: 'bg-green-100 text-green-700',
@@ -31,10 +16,7 @@ export default function OrdersPage() {
     isError,
   } = useQuery({
     queryKey: ['orders'],
-    queryFn: async () => {
-      const res = await api.get<Order[]>('/orders');
-      return res.data;
-    },
+    queryFn: orderApi.list,
   });
 
   if (isLoading) return <p className="text-gray-500">Loading orders…</p>;
