@@ -264,7 +264,21 @@ func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID s
 		}
 		products = append(products, p)
 	}
-	return products, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Load images so listings show cover thumbnails
+	for i := range products {
+		images, err := r.ListImages(ctx, products[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		products[i].Images = images
+	}
+
+	return products, nil
+
 }
 
 // CountProducts returns product counts by status (for admin dashboard)
