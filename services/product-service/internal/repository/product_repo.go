@@ -91,6 +91,19 @@ func scanProduct(row rowScanner) (domain.Product, error) {
 	return p, err
 }
 
+// loadImagesForAll populates the Images field for each product (N+1 queries).
+// At scale, this would be batched into a single query by product IDs.
+func (r *PostgresProductRepository) loadImagesForAll(ctx context.Context, products []domain.Product) error {
+	for i := range products {
+		images, err := r.ListImages(ctx, products[i].ID)
+		if err != nil {
+			return err
+		}
+		products[i].Images = images
+	}
+	return nil
+}
+
 // Create inserts a new product and returns it (with images loaded)
 func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product) (*domain.Product, error) {
 	p.ID = uuid.NewString()
@@ -143,16 +156,12 @@ func (r *PostgresProductRepository) List(ctx context.Context, limit, offset int)
 		return nil, 0, err
 	}
 
-	// Load images for each product (so grid cards can show a cover image)
-	for i := range products {
-		images, err := r.ListImages(ctx, products[i].ID)
-		if err != nil {
-			return nil, 0, err
-		}
-		products[i].Images = images
+	if err := r.loadImagesForAll(ctx, products); err != nil {
+		return nil, 0, err
 	}
 
 	return products, total, nil
+
 }
 
 // GetByID returns a single product with its image gallery
@@ -268,13 +277,8 @@ func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID s
 		return nil, err
 	}
 
-	// Load images so listings show cover thumbnails
-	for i := range products {
-		images, err := r.ListImages(ctx, products[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		products[i].Images = images
+	if err := r.loadImagesForAll(ctx, products); err != nil {
+		return nil, err
 	}
 
 	return products, nil
