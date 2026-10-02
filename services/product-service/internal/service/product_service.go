@@ -209,3 +209,23 @@ func (s *ProductService) SetStatus(ctx context.Context, id, sellerID, status str
 	product.SetDisplayPrice()
 	return product, nil
 }
+
+// Reindex rebuilds the entire Elasticsearch index from the database (admin/ops tool).
+// Loads all active products (with images + seller name) and re-indexes them.
+// Reindex rebuilds the Elasticsearch index from the database (ops tool)
+func (s *ProductService) Reindex(ctx context.Context) (int, error) {
+	products, _, err := s.repo.List(ctx, 1000, 0)
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for i := range products {
+		products[i].SellerName = s.users.GetUserName(products[i].SellerID)
+		if err := s.search.IndexProduct(products[i]); err != nil {
+			continue
+		}
+		count++
+	}
+	return count, nil
+}

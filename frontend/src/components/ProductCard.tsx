@@ -20,7 +20,7 @@ const conditionColors: Record<string, string> = {
 };
 
 export default function ProductCard({ product }: { product: Product }) {
-  const image = product.images?.[0]?.image_url;
+  const image = product.images?.[0]?.image_url ?? product.image_url;
 
   return (
     <Link

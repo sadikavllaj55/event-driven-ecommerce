@@ -47,6 +47,10 @@ func (s *Search) IndexProduct(p domain.Product) error {
 	if p.CategoryID != nil {
 		categoryID = *p.CategoryID
 	}
+	coverImage := ""
+	if len(p.Images) > 0 {
+		coverImage = p.Images[0].ImageURL
+	}
 	doc := map[string]any{
 		"id":          p.ID,
 		"seller_id":   p.SellerID,
@@ -61,6 +65,7 @@ func (s *Search) IndexProduct(p domain.Product) error {
 		"color":       p.Color,
 		"material":    p.Material,
 		"category_id": categoryID,
+		"image_url":   coverImage,
 	}
 
 	body, err := json.Marshal(doc)
