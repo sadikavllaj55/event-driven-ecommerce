@@ -139,7 +139,20 @@ func (r *PostgresProductRepository) List(ctx context.Context, limit, offset int)
 		}
 		products = append(products, p)
 	}
-	return products, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	// Load images for each product (so grid cards can show a cover image)
+	for i := range products {
+		images, err := r.ListImages(ctx, products[i].ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		products[i].Images = images
+	}
+
+	return products, total, nil
 }
 
 // GetByID returns a single product with its image gallery

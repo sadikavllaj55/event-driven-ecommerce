@@ -5,6 +5,8 @@ import { api } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import type { Product } from '../../types';
+import { useImageUpload } from '../../hooks/useImageUpload';
+import ImageUploader from '../../components/ImageUploader';
 
 const CONDITIONS = [
   { value: 'new_with_tags', label: 'New with tags' },
@@ -20,6 +22,7 @@ const GENDERS = [
   { value: 'unisex', label: 'Unisex' },
   { value: 'kids', label: 'Kids' },
 ];
+const { uploadImages } = useImageUpload();
 
 export default function SellPage() {
   const { user } = useAuth();
@@ -75,13 +78,7 @@ export default function SellPage() {
       const productId = res.data.id;
 
       // 2. Upload images (if any)
-      for (const image of images) {
-        const fd = new FormData();
-        fd.append('image', image);
-        await api.post(`/products/${productId}/images`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      }
+      await uploadImages(`/products/${productId}/images`, images);
 
       toast.success('Listing created! 🎉');
       navigate(ROUTES.myProducts);
@@ -204,18 +201,7 @@ export default function SellPage() {
         </div>
 
         <Field label="Photos">
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setImages(Array.from(e.target.files ?? []))}
-            className="text-sm text-gray-600"
-          />
-          {images.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
-              {images.length} photo(s) selected
-            </p>
-          )}
+          <ImageUploader images={images} onChange={setImages} max={7} />
         </Field>
 
         <button

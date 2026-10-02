@@ -134,8 +134,8 @@ CREATE TABLE IF NOT EXISTS settings (
 
 -- Seed default settings
 INSERT INTO settings (key, value) VALUES
-    ('max_images_per_product', '5')
-ON CONFLICT (key) DO NOTHING;
+    ('max_images_per_product', '7')
+
 
 
 CREATE TABLE IF NOT EXISTS product_images (
