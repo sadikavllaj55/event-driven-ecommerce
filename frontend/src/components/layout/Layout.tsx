@@ -18,6 +18,18 @@ export default function Layout() {
             {user ? (
               <>
                 <Link
+                  to={ROUTES.sell}
+                  className="text-teal-600 hover:underline"
+                >
+                  Sell 🏷️
+                </Link>
+                <Link
+                  to={ROUTES.myProducts}
+                  className="text-teal-600 hover:underline"
+                >
+                  My Listings
+                </Link>
+                <Link
                   to={ROUTES.favorites}
                   className="text-teal-600 hover:underline"
                 >

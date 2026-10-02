@@ -12,6 +12,8 @@ import AboutPage from './pages/static/AboutPage';
 import TermsPage from './pages/static/TermsPage';
 import PrivacyPage from './pages/static/PrivacyPage';
 import FaqPage from './pages/static/FaqPage';
+import SellPage from './pages/seller/SellPage';
+import MyProductsPage from './pages/seller/MyProductsPage';
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
         <Route path={ROUTES.terms} element={<TermsPage />} />
         <Route path={ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={ROUTES.faq} element={<FaqPage />} />
+        <Route path={ROUTES.sell} element={<SellPage />} />
+        <Route path={ROUTES.myProducts} element={<MyProductsPage />} />
       </Route>
     </Routes>
   );

@@ -31,3 +31,25 @@ export interface PagedProducts {
   page: number;
   limit: number;
 }
+
+export interface CreateProductInput {
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  brand: string;
+  size: string;
+  color: string;
+  material: string;
+  condition: string;
+  gender: string;
+  category_id?: string | null;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  children: Category[];
+}

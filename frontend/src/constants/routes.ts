@@ -11,6 +11,9 @@ export const ROUTES = {
   favorites: '/favorites',
   productDetail: '/products/:id',
   product: (id: string) => `/products/${id}`,
+  // Seller
+  sell: '/sell',
+  myProducts: '/my-products',
 
   // Static pages
   about: '/about',
