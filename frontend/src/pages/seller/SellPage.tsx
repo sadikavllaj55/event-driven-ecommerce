@@ -7,6 +7,8 @@ import { ROUTES } from '../../constants/routes';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import ImageUploader from '../../components/ImageUploader';
 import { getErrorMessage } from '../../utils/errors';
+import { useQuery } from '@tanstack/react-query';
+import { categoryApi } from '../../api/categories';
 
 import {
   CONDITIONS,
@@ -18,6 +20,10 @@ export default function SellPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { uploadImages } = useImageUpload();
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoryApi.list,
+  });
 
   const [form, setForm] = useState({
     name: '',
@@ -30,6 +36,7 @@ export default function SellPage() {
     material: '',
     condition: 'good',
     gender: 'unisex',
+    category_id: '',
   });
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +71,7 @@ export default function SellPage() {
         material: form.material,
         condition: form.condition,
         gender: form.gender,
+        category_id: form.category_id || null,
       });
 
       // 2. Upload images (if any)
@@ -174,7 +182,7 @@ export default function SellPage() {
               ))}
             </select>
           </Field>
-          <Field label="Category">
+          <Field label="Department">
             <select
               value={form.gender}
               onChange={(e) => update('gender', e.target.value)}
@@ -183,6 +191,20 @@ export default function SellPage() {
               {GENDERS.map((g) => (
                 <option key={g.value} value={g.value}>
                   {g.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Category">
+            <select
+              value={form.category_id}
+              onChange={(e) => update('category_id', e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Select a category</option>
+              {categories?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>

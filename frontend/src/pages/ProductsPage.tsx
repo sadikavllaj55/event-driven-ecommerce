@@ -3,22 +3,36 @@ import { useQuery } from '@tanstack/react-query';
 import { productApi } from '../api/products';
 import type { PagedProducts } from '../types';
 import ProductCard from '../components/ProductCard';
-import { useDebounce } from '../hooks/useDebounce';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
+import Hero from '../components/Hero';
+import CategoryNav from '../components/CategoryNav';
+import DepartmentTabs from '../components/DepartmentTabs';
+import { useDebounce } from '../hooks/useDebounce';
 import { PRODUCTS_PER_PAGE } from '../constants/product';
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string | null>(null);
   const debouncedSearch = useDebounce(search, 400);
 
-  const isSearching = debouncedSearch.trim() !== '';
+  // Filtering = any of search / category / department active
+  const isFiltering =
+    debouncedSearch.trim() !== '' || category !== null || department !== null;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['products', { page, search: debouncedSearch }],
+  const { data, isLoading, isError, isFetching } = useQuery({
+    queryKey: [
+      'products',
+      { page, search: debouncedSearch, category, department },
+    ],
     queryFn: async () => {
-      if (isSearching) {
-        const products = await productApi.search(debouncedSearch);
+      if (isFiltering) {
+        const products = await productApi.search(
+          debouncedSearch,
+          category ?? undefined,
+          department ?? undefined,
+        );
         return {
           products,
           total: products.length,
@@ -31,12 +45,22 @@ export default function ProductsPage() {
   });
 
   const totalPages =
-    data && !isSearching ? Math.ceil(data.total / PRODUCTS_PER_PAGE) : 1;
+    data && !isFiltering ? Math.ceil(data.total / PRODUCTS_PER_PAGE) : 1;
 
   return (
     <div>
+      <Hero department={department} />
+      {/* Department tabs */}
+      <DepartmentTabs
+        selected={department}
+        onSelect={(d) => {
+          setDepartment(d);
+          setPage(1);
+        }}
+      />
+
       {/* Search bar */}
-      <div className="mb-6">
+      <div className="mb-4" id="browse">
         <input
           type="text"
           value={search}
@@ -49,8 +73,17 @@ export default function ProductsPage() {
         />
       </div>
 
+      {/* Category filter */}
+      <CategoryNav
+        selected={category}
+        onSelect={(c) => {
+          setCategory(c);
+          setPage(1);
+        }}
+      />
+
       <h1 className="text-xl font-semibold text-gray-900 mb-4">
-        {isSearching ? `Results for "${debouncedSearch}"` : 'Browse items'}
+        {debouncedSearch ? `Results for "${debouncedSearch}"` : 'Browse items'}
       </h1>
 
       {isLoading && (
@@ -66,14 +99,19 @@ export default function ProductsPage() {
         <p className="text-gray-500">No items found.</p>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {/* Product grid — smooth fade when filters change */}
+      <div
+        className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-opacity duration-300 ${
+          isFetching ? 'opacity-50' : 'opacity-100'
+        }`}
+      >
         {data?.products.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
 
-      {/* Pagination (only when browsing, not searching) */}
-      {data && !isSearching && totalPages > 1 && (
+      {/* Pagination (only when browsing, not filtering) */}
+      {data && !isFiltering && totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-8">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}

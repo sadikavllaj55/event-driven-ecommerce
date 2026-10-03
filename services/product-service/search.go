@@ -107,10 +107,26 @@ func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, erro
 	must := []map[string]any{}
 	if strings.TrimSpace(f.Query) != "" {
 		must = append(must, map[string]any{
-			"multi_match": map[string]any{
-				"query":     f.Query,
-				"fields":    []string{"name^2", "description", "seller_name"},
-				"fuzziness": "AUTO",
+			"bool": map[string]any{
+				"should": []map[string]any{
+					// Fuzzy full-word match (typo tolerance)
+					{
+						"multi_match": map[string]any{
+							"query":     f.Query,
+							"fields":    []string{"name^2", "description", "seller_name"},
+							"fuzziness": "AUTO",
+						},
+					},
+					// Prefix match (partial typing: "Backe" → "Backend")
+					{
+						"multi_match": map[string]any{
+							"query":  f.Query,
+							"fields": []string{"name^2", "description", "seller_name"},
+							"type":   "phrase_prefix",
+						},
+					},
+				},
+				"minimum_should_match": 1,
 			},
 		})
 	} else {

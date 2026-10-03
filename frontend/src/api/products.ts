@@ -11,9 +11,13 @@ export const productApi = {
   },
 
   // Search (Elasticsearch)
-  search: async (query: string): Promise<Product[]> => {
+  search: async (
+    query: string,
+    category?: string,
+    gender?: string,
+  ): Promise<Product[]> => {
     const res = await api.get<Product[]>('/products/search', {
-      params: { q: query },
+      params: { q: query, category, gender },
     });
     return res.data;
   },
