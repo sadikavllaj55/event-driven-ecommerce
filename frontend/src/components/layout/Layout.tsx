@@ -17,6 +17,14 @@ export default function Layout() {
           <nav className="flex items-center gap-4 text-sm">
             {user ? (
               <>
+                {user.role === 'admin' && (
+                  <Link
+                    to={ROUTES.adminDashboard}
+                    className="text-purple-600 hover:underline font-medium"
+                  >
+                    Admin 📊
+                  </Link>
+                )}
                 <Link
                   to={ROUTES.sell}
                   className="text-teal-600 hover:underline"

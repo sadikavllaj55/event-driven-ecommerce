@@ -20,4 +20,7 @@ export const ROUTES = {
   terms: '/terms',
   privacy: '/privacy',
   faq: '/faq',
+  // Admin
+  adminDashboard: '/admin',
+  adminUsers: '/admin/users',
 } as const;
