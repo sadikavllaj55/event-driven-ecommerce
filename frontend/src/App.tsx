@@ -15,6 +15,7 @@ import FaqPage from './pages/static/FaqPage';
 import SellPage from './pages/seller/SellPage';
 import MyProductsPage from './pages/seller/MyProductsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
         <Route path={ROUTES.sell} element={<SellPage />} />
         <Route path={ROUTES.myProducts} element={<MyProductsPage />} />
         <Route path={ROUTES.adminDashboard} element={<AdminDashboard />} />
+        <Route path={ROUTES.adminUsers} element={<AdminUsers />} />
       </Route>
     </Routes>
   );
