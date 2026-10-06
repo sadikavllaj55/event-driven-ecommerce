@@ -93,11 +93,22 @@ func scanProduct(row rowScanner) (domain.Product, error) {
 
 // loadImagesForAll populates the Images field for each product (N+1 queries).
 // At scale, this would be batched into a single query by product IDs.
+// loadImagesForAll populates Images for every product using ONE batched query (no N+1).
 func (r *PostgresProductRepository) loadImagesForAll(ctx context.Context, products []domain.Product) error {
+	ids := make([]string, len(products))
+	for i, p := range products {
+		ids[i] = p.ID
+	}
+
+	byProduct, err := r.listImagesForProducts(ctx, ids)
+	if err != nil {
+		return err
+	}
+
 	for i := range products {
-		images, err := r.ListImages(ctx, products[i].ID)
-		if err != nil {
-			return err
+		images := byProduct[products[i].ID]
+		if images == nil {
+			images = []domain.ProductImage{} // keep JSON as [] instead of null
 		}
 		products[i].Images = images
 	}

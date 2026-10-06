@@ -99,3 +99,33 @@ func (r *PostgresProductRepository) GetProductSeller(ctx context.Context, produc
 	}
 	return sellerID, err
 }
+
+// listImagesForProducts loads images for many products in ONE query
+// (avoids N+1) and groups them by product ID.
+func (r *PostgresProductRepository) listImagesForProducts(ctx context.Context, productIDs []string) (map[string][]domain.ProductImage, error) {
+	result := make(map[string][]domain.ProductImage, len(productIDs))
+	if len(productIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, product_id, image_url, position, created_at
+		 FROM product_images
+		 WHERE product_id = ANY($1::uuid[])
+		 ORDER BY product_id, position`,
+		productIDs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var img domain.ProductImage
+		if err := rows.Scan(&img.ID, &img.ProductID, &img.ImageURL, &img.Position, &img.CreatedAt); err != nil {
+			return nil, err
+		}
+		result[img.ProductID] = append(result[img.ProductID], img)
+	}
+	return result, rows.Err()
+}
