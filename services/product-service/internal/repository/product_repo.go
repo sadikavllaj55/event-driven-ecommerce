@@ -178,7 +178,7 @@ func (r *PostgresProductRepository) List(ctx context.Context, limit, offset int)
 // GetByID returns a single product with its image gallery
 func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*domain.Product, error) {
 	row := r.pool.QueryRow(ctx,
-		`SELECT `+productColumns+` FROM products WHERE id = $1 AND status = 'active'`, id,
+		`SELECT `+productColumns+` FROM products WHERE id = $1`, id,
 	)
 	p, err := scanProduct(row)
 	if errors.Is(err, pgx.ErrNoRows) {

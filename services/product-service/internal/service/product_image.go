@@ -38,7 +38,17 @@ func (s *ProductService) AddProductImage(
 		return nil, err
 	}
 
-	return s.repo.AddImage(ctx, productID, url)
+	img, err := s.repo.AddImage(ctx, productID, url)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only the first image becomes the cover, so only then does the
+	// search document change (avoids re-indexing on every upload)
+	if count == 0 {
+		s.syncSearch(ctx, productID)
+	}
+	return img, nil
 }
 
 // ListProductImages returns a product's image gallery
@@ -51,7 +61,14 @@ func (s *ProductService) DeleteProductImage(ctx context.Context, imageID, produc
 	if err := s.assertOwnership(ctx, productID, sellerID); err != nil {
 		return err
 	}
-	return s.repo.DeleteImage(ctx, imageID, productID)
+	if err := s.repo.DeleteImage(ctx, imageID, productID); err != nil {
+		return err
+	}
+
+	// If the deleted image was the cover, the next image becomes the cover
+	// (or none), so the search document must be refreshed
+	s.syncSearch(ctx, productID)
+	return nil
 }
 
 // SetImageURL updates a product's primary image URL (ownership enforced by the repo)

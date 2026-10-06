@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"io"
+	"log"
 	"product-service/internal/domain"
 	"product-service/internal/repository"
 )
@@ -103,6 +104,7 @@ func (s *ProductService) Update(ctx context.Context, in ProductInput) (*domain.P
 		return nil, err
 	}
 	updated.SetDisplayPrice()
+	s.syncSearch(ctx, updated.ID) // keep the search copy in sync with edits
 	return updated, nil
 }
 
@@ -201,7 +203,7 @@ func (s *ProductService) SetStatus(ctx context.Context, id, sellerID, status str
 	// Keep the search index in sync: active = searchable, inactive = removed
 	if status == domain.StatusActive {
 		product.SellerName = s.users.GetUserName(product.SellerID)
-		_ = s.search.IndexProduct(*product)
+		s.syncSearch(ctx, id) // reload with images + seller name before indexing
 	} else {
 		_ = s.search.DeleteProduct(id)
 	}
@@ -244,4 +246,22 @@ func (s *ProductService) Reindex(ctx context.Context) (int, error) {
 		}
 	}
 	return count, nil
+}
+
+// syncSearch re-indexes a product after a change that affects its search
+// document (images, edits, reactivation). Best-effort: Postgres stays the
+// source of truth. Non-active products are not re-added to the index.
+func (s *ProductService) syncSearch(ctx context.Context, productID string) {
+	p, err := s.repo.GetByID(ctx, productID) // includes images → fresh cover
+	if err != nil {
+		log.Printf("syncSearch: load product %s: %v", productID, err)
+		return
+	}
+	if p.Status != "active" {
+		return
+	}
+	p.SellerName = s.users.GetUserName(p.SellerID)
+	if err := s.search.IndexProduct(*p); err != nil {
+		log.Printf("syncSearch: index product %s: %v", productID, err)
+	}
 }
