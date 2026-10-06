@@ -168,7 +168,15 @@ app.get(
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 app.get('/categories', gateway(PRODUCT_SERVICE_URL));
+app.get('/users/:id/profile', gateway(USER_SERVICE_URL));
 app.get('/settings/public', gateway(PRODUCT_SERVICE_URL));
+app.put('/profile', authenticate, injectUserId, gateway(USER_SERVICE_URL));
+app.post(
+  '/profile/avatar',
+  authenticate,
+  injectUserId,
+  gateway(USER_SERVICE_URL),
+);
 
 // ---------- PROTECTED routes (require JWT) ----------
 // Products (seller — identity via X-User-ID)
@@ -182,6 +190,7 @@ app.get(
 );
 
 // Seller's own products (authenticated — includes their inactive listings)
+app.get('/sellers/:id/products', gateway(PRODUCT_SERVICE_URL));
 
 app.put(
   '/products/:id',

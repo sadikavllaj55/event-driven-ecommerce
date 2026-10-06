@@ -16,8 +16,37 @@ type User struct {
 	Verified     bool      `json:"verified"`
 	TOTPSecret   string    `json:"-"` // never expose the secret
 	TOTPEnabled  bool      `json:"totp_enabled"`
+	AvatarURL    string    `json:"avatar_url"`
+	Bio          string    `json:"bio"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+
+// Profile is the PUBLIC view of a user (seller shop page).
+// It deliberately has no email, role, status, or 2FA fields.
+type Profile struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	AvatarURL string    `json:"avatar_url"`
+	Bio       string    `json:"bio"`
+	CreatedAt time.Time `json:"created_at"` // "member since"
+}
+
+// ToProfile converts a User into its public Profile
+func (u User) ToProfile() Profile {
+	return Profile{
+		ID:        u.ID,
+		Name:      u.Name,
+		AvatarURL: u.AvatarURL,
+		Bio:       u.Bio,
+		CreatedAt: u.CreatedAt,
+	}
+}
+
+// MaxBioLength caps the profile bio
+const MaxBioLength = 500
+
+// MaxAvatarSize caps avatar uploads (2 MB)
+const MaxAvatarSize = 2 << 20
 
 // Valid roles
 const (
@@ -67,6 +96,9 @@ var (
 	ErrUserBanned         = errors.New("account is banned")
 	ErrInvalidStatus      = errors.New("status must be 'active' or 'banned'")
 	ErrCannotSelfModify   = errors.New("admins cannot modify their own account")
+	ErrBioTooLong         = errors.New("bio must be at most 500 characters")
+	ErrInvalidImage       = errors.New("file must be an image")
+	ErrImageTooLarge      = errors.New("image must be at most 2 MB")
 )
 
 // IsValidRegistrationRole checks a role is allowed at registration (not admin)

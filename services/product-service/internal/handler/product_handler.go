@@ -78,6 +78,7 @@ func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /products/{id}/images", h.listImages)
 	mux.HandleFunc("DELETE /products/{id}/images/{imageId}", h.deleteImage)
 	mux.HandleFunc("POST /admin/reindex", h.reindex)
+	mux.HandleFunc("GET /sellers/{id}/products", h.listSellerProducts)
 }
 
 func (h *ProductHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -294,4 +295,18 @@ func (h *ProductHandler) reindex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"reindexed": count})
+}
+
+// listSellerProducts returns a seller's ACTIVE products (public shop page)
+func (h *ProductHandler) listSellerProducts(w http.ResponseWriter, r *http.Request) {
+	// Invalid or missing values become 0, and the service applies defaults
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	paged, err := h.svc.ListSellerPublic(r.Context(), r.PathValue("id"), page, limit)
+	if err != nil {
+		writeProductError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, paged)
 }

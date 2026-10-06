@@ -60,6 +60,11 @@ CREATE TABLE IF NOT EXISTS users (
     totp_secret TEXT,
     totp_enabled BOOLEAN NOT NULL DEFAULT false,
     status user_status NOT NULL DEFAULT 'active',
+    avatar_url TEXT NOT NULL DEFAULT '',
+    bio TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

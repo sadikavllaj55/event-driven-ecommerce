@@ -19,6 +19,8 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminSettings from './pages/admin/AdminSettings';
 import EditProductPage from './pages/seller/EditProductPage';
+import ProfilePage from './pages/ProfilePage';
+import SellerShopPage from './pages/SellerShopPage';
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
         <Route path={ROUTES.adminCategories} element={<AdminCategories />} />
         <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
         <Route path={ROUTES.productEdit} element={<EditProductPage />} />
+        <Route path={ROUTES.myProfile} element={<ProfilePage />} />
+        <Route path={ROUTES.sellerShop} element={<SellerShopPage />} />
       </Route>
     </Routes>
   );

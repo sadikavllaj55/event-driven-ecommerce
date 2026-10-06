@@ -21,6 +21,8 @@ type UserRepository interface {
 	EnableTOTP(ctx context.Context, userID string) error
 	ListUsers(ctx context.Context) ([]domain.User, error)
 	UpdateStatus(ctx context.Context, userID, status string) error
+	UpdateBio(ctx context.Context, userID, bio string) error
+	UpdateAvatarURL(ctx context.Context, userID, url string) error
 	UpdateRole(ctx context.Context, userID, role string) error
 	CountUsers(ctx context.Context) (map[string]int, error)
 }
@@ -51,19 +53,19 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User, v
 	return nil
 }
 
+// userColumns is the shared column list for single-user lookups.
+// ORDER MATTERS: it must match the Scan order in getUser.
+const userColumns = `id, email, password_hash, name, role, verified,
+  totp_secret, totp_enabled, status, avatar_url, bio, created_at`
+
 // GetByEmail looks up a user by email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	return r.getUser(ctx,
-		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, status, created_at
-		 FROM users WHERE email = $1`, email)
-
+	return r.getUser(ctx, `SELECT `+userColumns+` FROM users WHERE email = $1`, email)
 }
 
 // GetByID looks up a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
-	return r.getUser(ctx,
-		`SELECT id, email, password_hash, name, role, verified, totp_secret, totp_enabled, status, created_at
-		 FROM users WHERE id = $1`, id)
+	return r.getUser(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id)
 }
 
 // getUser is a shared helper for single-user lookups
@@ -72,9 +74,8 @@ func (r *PostgresUserRepository) getUser(ctx context.Context, query, arg string)
 	var totpSecret *string // nullable in DB
 	err := r.pool.QueryRow(ctx, query, arg).Scan(
 		&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Verified,
-		&totpSecret, &u.TOTPEnabled, &u.Status, &u.CreatedAt,
+		&totpSecret, &u.TOTPEnabled, &u.Status, &u.AvatarURL, &u.Bio, &u.CreatedAt,
 	)
-
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrUserNotFound
 	}
@@ -218,4 +219,28 @@ func (r *PostgresUserRepository) CountUsers(ctx context.Context) (map[string]int
 	stats["banned"] = banned
 
 	return stats, nil
+}
+
+// UpdateBio sets a user's profile bio
+func (r *PostgresUserRepository) UpdateBio(ctx context.Context, userID, bio string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE users SET bio = $1 WHERE id = $2`, bio, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
+// UpdateAvatarURL sets a user's avatar image URL
+func (r *PostgresUserRepository) UpdateAvatarURL(ctx context.Context, userID, url string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE users SET avatar_url = $1 WHERE id = $2`, url, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }

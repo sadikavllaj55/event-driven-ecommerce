@@ -27,4 +27,8 @@ export const ROUTES = {
   adminSettings: '/admin/settings',
   productEdit: '/my-products/:id/edit', // pattern (string) → for <Route>
   editProduct: (id: string) => `/my-products/${id}/edit`, // builder (function) → for <Link>
+
+  myProfile: '/profile',
+  sellerShop: '/sellers/:id', // route pattern
+  seller: (id: string) => `/sellers/${id}`, // link builder
 } as const;

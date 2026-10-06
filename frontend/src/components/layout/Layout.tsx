@@ -55,7 +55,12 @@ export default function Layout() {
                 >
                   Orders 📦
                 </Link>
-                <span className="text-gray-600">Hi, {user.email}</span>
+                <Link
+                  to={ROUTES.myProfile}
+                  className="text-gray-700 hover:text-teal-600 font-medium"
+                >
+                  👤 Profile
+                </Link>
                 <button
                   onClick={() => {
                     logout();

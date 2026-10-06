@@ -2,8 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"path"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -35,10 +39,17 @@ type UserService struct {
 	hasher    PasswordHasher
 	publisher EventPublisher
 	totp      TOTPProvider
+	storage   AvatarStorage
 }
 
-func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher, totp TOTPProvider) *UserService {
-	return &UserService{repo: repo, hasher: hasher, publisher: publisher, totp: totp}
+// AvatarStorage uploads profile images and returns their public URL.
+// The service doesn't know (or care) that it's MinIO underneath.
+type AvatarStorage interface {
+	UploadAvatar(objectName string, reader io.Reader, size int64, contentType string) (string, error)
+}
+
+func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher, totp TOTPProvider, storage AvatarStorage) *UserService {
+	return &UserService{repo: repo, hasher: hasher, publisher: publisher, totp: totp, storage: storage}
 }
 
 // Register validates input, creates an unverified user, and publishes a
@@ -228,4 +239,57 @@ func (s *UserService) SetUserRole(ctx context.Context, adminID, targetID, role s
 // Stats returns user counts (for admin dashboard)
 func (s *UserService) Stats(ctx context.Context) (map[string]int, error) {
 	return s.repo.CountUsers(ctx)
+}
+
+// GetProfile returns a user's PUBLIC profile (no email, role, or 2FA data).
+// Banned users are hidden, as if they don't exist.
+func (s *UserService) GetProfile(ctx context.Context, userID string) (*domain.Profile, error) {
+	u, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if u.Status == domain.UserStatusBanned {
+		return nil, domain.ErrUserNotFound
+	}
+	p := u.ToProfile()
+	return &p, nil
+}
+
+// UpdateBio validates and saves the current user's bio
+func (s *UserService) UpdateBio(ctx context.Context, userID, bio string) (*domain.Profile, error) {
+	bio = strings.TrimSpace(bio)
+	if utf8.RuneCountInString(bio) > domain.MaxBioLength {
+		return nil, domain.ErrBioTooLong
+	}
+	if err := s.repo.UpdateBio(ctx, userID, bio); err != nil {
+		return nil, err
+	}
+	return s.GetProfile(ctx, userID)
+}
+
+// UploadAvatar validates the image, stores it, and saves its URL on the user
+func (s *UserService) UploadAvatar(
+	ctx context.Context,
+	userID, filename, contentType string,
+	reader io.Reader,
+	size int64,
+) (*domain.Profile, error) {
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, domain.ErrInvalidImage
+	}
+	if size > domain.MaxAvatarSize {
+		return nil, domain.ErrImageTooLarge
+	}
+
+	// Unique name per upload, namespaced by user (avoids browser cache showing an old avatar)
+	objectName := fmt.Sprintf("%s/%d-%s", userID, time.Now().UnixNano(), path.Base(filename))
+
+	url, err := s.storage.UploadAvatar(objectName, reader, size, contentType)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateAvatarURL(ctx, userID, url); err != nil {
+		return nil, err
+	}
+	return s.GetProfile(ctx, userID)
 }

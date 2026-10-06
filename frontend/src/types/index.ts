@@ -23,7 +23,6 @@ export interface Product {
   image_url: string;
   images: ProductImage[];
   category_id: string | null;
-
   created_at: string;
 }
 
@@ -82,5 +81,14 @@ export interface Order {
   status: string;
   total_cents: number;
   items: OrderItem[];
+  created_at: string;
+}
+
+// Public seller profile (never contains email/role)
+export interface Profile {
+  id: string;
+  name: string;
+  avatar_url: string;
+  bio: string;
   created_at: string;
 }

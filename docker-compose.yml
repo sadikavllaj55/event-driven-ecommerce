@@ -106,11 +106,17 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/ecommerce
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       PORT: "8082"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+
 
 
   product-service:

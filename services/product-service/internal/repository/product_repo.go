@@ -16,7 +16,7 @@ import (
 type ProductRepository interface {
 	Create(ctx context.Context, p domain.Product) (*domain.Product, error)
 	List(ctx context.Context, limit, offset int) ([]domain.Product, int, error)
-	ListBySeller(ctx context.Context, sellerID string, limit, offset int) ([]domain.Product, int, error)
+	ListBySeller(ctx context.Context, sellerID string, activeOnly bool, limit, offset int) ([]domain.Product, int, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
 	UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error)
@@ -262,12 +262,17 @@ func (r *PostgresProductRepository) UpdateStatus(ctx context.Context, id, seller
 	return r.GetByID(ctx, id)
 }
 
-// ListBySeller returns one page of a seller's products (active + inactive, not deleted)
-// plus the total count, so the frontend can render pagination.
-func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID string, limit, offset int) ([]domain.Product, int, error) {
+// ListBySeller returns one page of a seller's products plus the total count.
+// activeOnly=false → owner view (active + paused); true → public shop (active only).
+func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID string, activeOnly bool, limit, offset int) ([]domain.Product, int, error) {
+	where := `seller_id = $1 AND status != 'deleted'`
+	if activeOnly {
+		where = `seller_id = $1 AND status = 'active'`
+	}
+
 	var total int
 	if err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM products WHERE seller_id = $1 AND status != 'deleted'`,
+		`SELECT COUNT(*) FROM products WHERE `+where,
 		sellerID,
 	).Scan(&total); err != nil {
 		return nil, 0, err
@@ -276,7 +281,7 @@ func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID s
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+productColumns+`
 		 FROM products
-		 WHERE seller_id = $1 AND status != 'deleted'
+		 WHERE `+where+`
 		 ORDER BY created_at DESC, id DESC
 		 LIMIT $2 OFFSET $3`,
 		sellerID, limit, offset,

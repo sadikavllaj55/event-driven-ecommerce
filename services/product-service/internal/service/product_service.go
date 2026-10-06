@@ -262,7 +262,30 @@ func (s *ProductService) ListMine(ctx context.Context, sellerID string, page, li
 	}
 	page, limit, offset := normalizePage(page, limit)
 
-	products, total, err := s.repo.ListBySeller(ctx, sellerID, limit, offset)
+	products, total, err := s.repo.ListBySeller(ctx, sellerID, false, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	for i := range products {
+		products[i].SetDisplayPrice()
+	}
+
+	return &PagedProducts{
+		Products: products,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+	}, nil
+}
+
+// ListSellerPublic returns one page of a seller's ACTIVE products (public shop page)
+func (s *ProductService) ListSellerPublic(ctx context.Context, sellerID string, page, limit int) (*PagedProducts, error) {
+	if sellerID == "" {
+		return nil, domain.ErrInvalidInput
+	}
+	page, limit, offset := normalizePage(page, limit)
+
+	products, total, err := s.repo.ListBySeller(ctx, sellerID, true, limit, offset)
 	if err != nil {
 		return nil, err
 	}

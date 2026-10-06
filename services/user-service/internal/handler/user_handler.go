@@ -44,6 +44,10 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /2fa/setup", h.setup2FA)
 	mux.HandleFunc("POST /2fa/enable", h.enable2FA)
 	mux.HandleFunc("POST /login/2fa", h.login2FA)
+	mux.HandleFunc("GET /users/{id}/profile", h.getProfile)
+	mux.HandleFunc("PUT /profile", h.updateProfile)
+	mux.HandleFunc("POST /profile/avatar", h.uploadAvatar)
+
 }
 
 func (h *UserHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +184,9 @@ func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidInput),
 		errors.Is(err, domain.ErrWeakPassword),
-		errors.Is(err, domain.ErrInvalidRole):
+		errors.Is(err, domain.ErrInvalidRole),
+		errors.Is(err, domain.ErrBioTooLong),
+		errors.Is(err, domain.ErrInvalidImage):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, domain.ErrEmailExists):
 		writeError(w, http.StatusConflict, "email already registered")
@@ -207,6 +213,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "status must be 'active' or 'banned'")
 	case errors.Is(err, domain.ErrCannotSelfModify):
 		writeError(w, http.StatusForbidden, "admins cannot modify their own account")
+	case errors.Is(err, domain.ErrImageTooLarge):
+		writeError(w, http.StatusRequestEntityTooLarge, err.Error())
 	default:
 		log.Printf("Unexpected error: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")
@@ -233,4 +241,72 @@ func userFromHeader(w http.ResponseWriter, r *http.Request) string {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+// getProfile returns a user's PUBLIC profile (seller shop page)
+func (h *UserHandler) getProfile(w http.ResponseWriter, r *http.Request) {
+	profile, err := h.svc.GetProfile(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profile)
+}
+
+// updateProfile updates the current user's bio
+func (h *UserHandler) updateProfile(w http.ResponseWriter, r *http.Request) {
+	userID := userFromHeader(w, r)
+	if userID == "" {
+		return
+	}
+
+	var req struct {
+		Bio string `json:"bio"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	profile, err := h.svc.UpdateBio(r.Context(), userID, req.Bio)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profile)
+}
+
+// uploadAvatar handles a multipart avatar upload (form field "image")
+func (h *UserHandler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
+	userID := userFromHeader(w, r)
+	if userID == "" {
+		return
+	}
+
+	// Cap the request body BEFORE reading it (2 MB file + 1 MB form overhead)
+	r.Body = http.MaxBytesReader(w, r.Body, domain.MaxAvatarSize+1<<20)
+	if err := r.ParseMultipartForm(domain.MaxAvatarSize); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeServiceError(w, domain.ErrImageTooLarge)
+			return
+		}
+		writeError(w, http.StatusBadRequest, "invalid multipart form")
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "missing 'image' file")
+		return
+	}
+	defer file.Close()
+
+	profile, err := h.svc.UploadAvatar(r.Context(), userID,
+		header.Filename, header.Header.Get("Content-Type"), file, header.Size)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profile)
 }
