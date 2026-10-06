@@ -331,6 +331,13 @@ app.patch(
   injectUserId,
   gateway(USER_SERVICE_URL),
 );
+app.post(
+  '/admin/reindex',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(PRODUCT_SERVICE_URL),
+);
 
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);

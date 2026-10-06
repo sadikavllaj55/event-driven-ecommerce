@@ -146,7 +146,7 @@ func (r *PostgresProductRepository) List(ctx context.Context, limit, offset int)
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+productColumns+`
 		 FROM products WHERE status = 'active'
-		 ORDER BY created_at DESC
+		 ORDER BY created_at DESC, id DESC
 		 LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
@@ -268,7 +268,7 @@ func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID s
 		`SELECT `+productColumns+`
 		 FROM products
 		 WHERE seller_id = $1 AND status != 'deleted'
-		 ORDER BY created_at DESC`,
+		 ORDER BY created_at DESC, id DESC`,
 		sellerID,
 	)
 	if err != nil {

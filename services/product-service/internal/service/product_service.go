@@ -210,22 +210,38 @@ func (s *ProductService) SetStatus(ctx context.Context, id, sellerID, status str
 	return product, nil
 }
 
-// Reindex rebuilds the entire Elasticsearch index from the database (admin/ops tool).
-// Loads all active products (with images + seller name) and re-indexes them.
-// Reindex rebuilds the Elasticsearch index from the database (ops tool)
+// Reindex rebuilds the Elasticsearch index from the database (ops tool).
+// Pages through ALL active products and caches seller names, so each
+// seller is fetched once (avoids N+1 calls to the User Service).
 func (s *ProductService) Reindex(ctx context.Context) (int, error) {
-	products, _, err := s.repo.List(ctx, 1000, 0)
-	if err != nil {
-		return 0, err
-	}
-
+	const batchSize = 500
+	sellerNames := make(map[string]string)
 	count := 0
-	for i := range products {
-		products[i].SellerName = s.users.GetUserName(products[i].SellerID)
-		if err := s.search.IndexProduct(products[i]); err != nil {
-			continue
+
+	for offset := 0; ; offset += batchSize {
+		products, _, err := s.repo.List(ctx, batchSize, offset)
+		if err != nil {
+			return count, err
 		}
-		count++
+
+		for i := range products {
+			sellerID := products[i].SellerID
+			name, cached := sellerNames[sellerID]
+			if !cached {
+				name = s.users.GetUserName(sellerID)
+				sellerNames[sellerID] = name
+			}
+			products[i].SellerName = name
+
+			if err := s.search.IndexProduct(products[i]); err != nil {
+				continue // best-effort per product
+			}
+			count++
+		}
+
+		if len(products) < batchSize {
+			break // last page
+		}
 	}
 	return count, nil
 }

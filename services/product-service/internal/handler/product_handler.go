@@ -77,6 +77,7 @@ func (h *ProductHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /products/{id}/images", h.uploadImage)
 	mux.HandleFunc("GET /products/{id}/images", h.listImages)
 	mux.HandleFunc("DELETE /products/{id}/images/{imageId}", h.deleteImage)
+	mux.HandleFunc("POST /admin/reindex", h.reindex)
 }
 
 func (h *ProductHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -278,4 +279,14 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func (h *ProductHandler) reindex(w http.ResponseWriter, r *http.Request) {
+	count, err := h.svc.Reindex(r.Context())
+	if err != nil {
+		log.Printf("Reindex failed: %v", err)
+		writeError(w, http.StatusInternalServerError, "reindex failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"reindexed": count})
 }
