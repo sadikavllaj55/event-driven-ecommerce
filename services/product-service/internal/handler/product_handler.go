@@ -145,12 +145,17 @@ func (h *ProductHandler) listMine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	products, err := h.svc.ListMine(r.Context(), sellerID)
+	// Invalid or missing values become 0, and the service applies defaults
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	paged, err := h.svc.ListMine(r.Context(), sellerID, page, limit)
 	if err != nil {
 		writeProductError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, products)
+	writeJSON(w, http.StatusOK, paged)
+
 }
 
 func (h *ProductHandler) get(w http.ResponseWriter, r *http.Request) {

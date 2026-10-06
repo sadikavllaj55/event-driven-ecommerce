@@ -1,8 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { productApi } from '../../api/products';
 import { ROUTES } from '../../constants/routes';
+import { getErrorMessage } from '../../utils/errors';
+
+const LISTINGS_PER_PAGE = 10;
 
 const statusStyles: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -11,34 +20,44 @@ const statusStyles: Record<string, string> = {
 
 export default function MyProductsPage() {
   const qc = useQueryClient();
+  const [page, setPage] = useState(1);
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ['my-products'],
-    queryFn: productApi.listMine,
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['my-products', page],
+    queryFn: () => productApi.listMine(page, LISTINGS_PER_PAGE),
+    placeholderData: keepPreviousData, // keep the current page visible while the next loads
   });
+
+  const products = data?.products ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / LISTINGS_PER_PAGE));
+
+  // ['my-products'] matches every page (prefix match), so all pages refresh
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ['my-products'] });
+    qc.invalidateQueries({ queryKey: ['products'] });
+    qc.invalidateQueries({ queryKey: ['product'] });
+  }
 
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       productApi.setStatus(id, status),
-
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-products'] });
-      qc.invalidateQueries({ queryKey: ['products'] }); // browse grid
-      qc.invalidateQueries({ queryKey: ['product'] }); // detail pages
+      invalidateAll();
       toast.success('Updated');
     },
-    onError: () => toast.error('Update failed'),
+    onError: (err) => toast.error(getErrorMessage(err, 'Update failed')),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => productApi.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-products'] });
-      qc.invalidateQueries({ queryKey: ['products'] });
-      qc.invalidateQueries({ queryKey: ['product'] });
+      // If we deleted the last item on the last page, step back one page
+      if (products.length === 1 && page > 1) setPage((p) => p - 1);
+      invalidateAll();
       toast.success('Deleted');
     },
-    onError: () => toast.error('Delete failed'),
+    onError: (err) => toast.error(getErrorMessage(err, 'Delete failed')),
   });
 
   if (isLoading) return <p className="text-gray-500">Loading…</p>;
@@ -46,7 +65,10 @@ export default function MyProductsPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">My listings 🏷️</h1>
+        <h1 className="text-xl font-semibold text-gray-900">
+          My listings 🏷️{' '}
+          <span className="text-sm font-normal text-gray-500">({total})</span>
+        </h1>
         <Link
           to={ROUTES.sell}
           className="bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-700"
@@ -55,7 +77,7 @@ export default function MyProductsPage() {
         </Link>
       </div>
 
-      {(!products || products.length === 0) && (
+      {total === 0 && (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <p className="text-gray-500">No listings yet.</p>
           <Link
@@ -67,8 +89,10 @@ export default function MyProductsPage() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {products?.map((p) => {
+      <div
+        className={`space-y-3 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}
+      >
+        {products.map((p) => {
           const image = p.images?.[0]?.image_url;
           return (
             <div
@@ -84,6 +108,7 @@ export default function MyProductsPage() {
                   <img
                     src={image}
                     alt={p.name}
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -129,7 +154,10 @@ export default function MyProductsPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => remove.mutate(p.id)}
+                  onClick={() => {
+                    if (window.confirm(`Delete "${p.name}"?`))
+                      remove.mutate(p.id);
+                  }}
                   className="text-red-500 hover:underline"
                 >
                   Delete
@@ -139,6 +167,29 @@ export default function MyProductsPage() {
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+          >
+            ← Prev
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

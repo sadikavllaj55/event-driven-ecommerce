@@ -29,8 +29,10 @@ export const productApi = {
   },
 
   // Seller's own listings
-  listMine: async (): Promise<Product[]> => {
-    const res = await api.get<Product[]>('/products/mine');
+  listMine: async (page: number, limit: number): Promise<PagedProducts> => {
+    const res = await api.get<PagedProducts>('/products/mine', {
+      params: { page, limit },
+    });
     return res.data;
   },
 

@@ -16,7 +16,7 @@ import (
 type ProductRepository interface {
 	Create(ctx context.Context, p domain.Product) (*domain.Product, error)
 	List(ctx context.Context, limit, offset int) ([]domain.Product, int, error)
-	ListBySeller(ctx context.Context, sellerID string) ([]domain.Product, error)
+	ListBySeller(ctx context.Context, sellerID string, limit, offset int) ([]domain.Product, int, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	Update(ctx context.Context, p domain.Product) (*domain.Product, error)
 	UpdateImageURL(ctx context.Context, id, sellerID, imageURL string) (*domain.Product, error)
@@ -262,17 +262,27 @@ func (r *PostgresProductRepository) UpdateStatus(ctx context.Context, id, seller
 	return r.GetByID(ctx, id)
 }
 
-// ListBySeller returns a seller's own products (active + inactive, excludes deleted)
-func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID string) ([]domain.Product, error) {
+// ListBySeller returns one page of a seller's products (active + inactive, not deleted)
+// plus the total count, so the frontend can render pagination.
+func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID string, limit, offset int) ([]domain.Product, int, error) {
+	var total int
+	if err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM products WHERE seller_id = $1 AND status != 'deleted'`,
+		sellerID,
+	).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+productColumns+`
 		 FROM products
 		 WHERE seller_id = $1 AND status != 'deleted'
-		 ORDER BY created_at DESC, id DESC`,
-		sellerID,
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT $2 OFFSET $3`,
+		sellerID, limit, offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -280,20 +290,18 @@ func (r *PostgresProductRepository) ListBySeller(ctx context.Context, sellerID s
 	for rows.Next() {
 		p, err := scanProduct(rows)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		products = append(products, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	if err := r.loadImagesForAll(ctx, products); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-
-	return products, nil
-
+	return products, total, nil
 }
 
 // CountProducts returns product counts by status (for admin dashboard)

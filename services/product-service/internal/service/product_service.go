@@ -120,14 +120,7 @@ func (s *ProductService) afterCreate(p *domain.Product) {
 
 // List returns a page of products with pagination metadata
 func (s *ProductService) List(ctx context.Context, page, limit int) (*PagedProducts, error) {
-	// Sensible defaults + guards
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20 // default page size, capped at 100
-	}
-	offset := (page - 1) * limit
+	page, limit, offset := normalizePage(page, limit)
 
 	products, total, err := s.repo.List(ctx, limit, offset)
 	if err != nil {
@@ -143,21 +136,6 @@ func (s *ProductService) List(ctx context.Context, page, limit int) (*PagedProdu
 		Page:     page,
 		Limit:    limit,
 	}, nil
-}
-
-// ListMine returns a seller's own products (active + inactive) with display prices
-func (s *ProductService) ListMine(ctx context.Context, sellerID string) ([]domain.Product, error) {
-	if sellerID == "" {
-		return nil, domain.ErrInvalidInput
-	}
-	products, err := s.repo.ListBySeller(ctx, sellerID)
-	if err != nil {
-		return nil, err
-	}
-	for i := range products {
-		products[i].SetDisplayPrice()
-	}
-	return products, nil
 }
 
 // Get returns a single product with display price set
@@ -264,4 +242,38 @@ func (s *ProductService) syncSearch(ctx context.Context, productID string) {
 	if err := s.search.IndexProduct(*p); err != nil {
 		log.Printf("syncSearch: index product %s: %v", productID, err)
 	}
+}
+
+// normalizePage applies default/capped pagination values and returns the offset.
+func normalizePage(page, limit int) (int, int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20 // default page size, capped at 100
+	}
+	return page, limit, (page - 1) * limit
+}
+
+// ListMine returns one page of a seller's own products (active + inactive)
+func (s *ProductService) ListMine(ctx context.Context, sellerID string, page, limit int) (*PagedProducts, error) {
+	if sellerID == "" {
+		return nil, domain.ErrInvalidInput
+	}
+	page, limit, offset := normalizePage(page, limit)
+
+	products, total, err := s.repo.ListBySeller(ctx, sellerID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	for i := range products {
+		products[i].SetDisplayPrice()
+	}
+
+	return &PagedProducts{
+		Products: products,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+	}, nil
 }
