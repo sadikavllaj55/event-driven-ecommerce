@@ -80,6 +80,12 @@ export default function AdminDashboard() {
         >
           Manage Categories →
         </Link>
+        <Link
+          to={ROUTES.adminSettings}
+          className="bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50"
+        >
+          Settings →
+        </Link>
       </div>
     </div>
   );

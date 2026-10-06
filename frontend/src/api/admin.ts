@@ -32,6 +32,12 @@ export interface AdminUser {
   created_at: string;
 }
 
+export interface Setting {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 export const adminApi = {
   stats: async (): Promise<AdminStats> => {
     const res = await api.get<AdminStats>('/admin/stats');
@@ -49,5 +55,15 @@ export const adminApi = {
 
   setUserRole: async (id: string, role: string): Promise<void> => {
     await api.patch(`/admin/users/${id}/role`, { role });
+  },
+
+  listSettings: async (): Promise<Setting[]> => {
+    const res = await api.get<Setting[]>('/admin/settings');
+    return res.data;
+  },
+
+  updateSetting: async (key: string, value: string): Promise<Setting> => {
+    const res = await api.put<Setting>(`/admin/settings/${key}`, { value });
+    return res.data;
   },
 };

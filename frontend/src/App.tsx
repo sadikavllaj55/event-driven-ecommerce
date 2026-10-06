@@ -17,6 +17,7 @@ import MyProductsPage from './pages/seller/MyProductsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCategories from './pages/admin/AdminCategories';
+import AdminSettings from './pages/admin/AdminSettings';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
         <Route path={ROUTES.adminDashboard} element={<AdminDashboard />} />
         <Route path={ROUTES.adminUsers} element={<AdminUsers />} />
         <Route path={ROUTES.adminCategories} element={<AdminCategories />} />
+        <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
       </Route>
     </Routes>
   );

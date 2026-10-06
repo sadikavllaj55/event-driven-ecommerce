@@ -9,12 +9,9 @@ import ImageUploader from '../../components/ImageUploader';
 import { getErrorMessage } from '../../utils/errors';
 import { useQuery } from '@tanstack/react-query';
 import { categoryApi } from '../../api/categories';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 
-import {
-  CONDITIONS,
-  GENDERS,
-  MAX_PRODUCT_IMAGES,
-} from '../../constants/product';
+import { CONDITIONS, GENDERS } from '../../constants/product';
 
 export default function SellPage() {
   const { user } = useAuth();
@@ -24,6 +21,7 @@ export default function SellPage() {
     queryKey: ['categories'],
     queryFn: categoryApi.list,
   });
+  const { maxImages } = usePublicSettings();
 
   const [form, setForm] = useState({
     name: '',
@@ -212,11 +210,7 @@ export default function SellPage() {
         </div>
 
         <Field label="Photos">
-          <ImageUploader
-            images={images}
-            onChange={setImages}
-            max={MAX_PRODUCT_IMAGES}
-          />
+          <ImageUploader images={images} onChange={setImages} max={maxImages} />
         </Field>
 
         <button

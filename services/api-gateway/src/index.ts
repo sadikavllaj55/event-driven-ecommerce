@@ -168,6 +168,7 @@ app.get(
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 app.get('/categories', gateway(PRODUCT_SERVICE_URL));
+app.get('/settings/public', gateway(PRODUCT_SERVICE_URL));
 
 // ---------- PROTECTED routes (require JWT) ----------
 // Products (seller — identity via X-User-ID)

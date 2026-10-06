@@ -26,6 +26,8 @@ func (h *SettingsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /admin/settings/{key}", h.update)
 	mux.HandleFunc("GET /admin/stats", h.stats)
 	mux.HandleFunc("GET /seller/stats", h.sellerStats)
+	mux.HandleFunc("GET /settings/public", h.publicSettings)
+
 }
 
 func (h *SettingsHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -79,4 +81,8 @@ func (h *SettingsHandler) sellerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
+}
+
+func (h *SettingsHandler) publicSettings(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, h.svc.PublicSettings(r.Context()))
 }

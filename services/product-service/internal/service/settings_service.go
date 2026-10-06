@@ -64,3 +64,13 @@ func (s *SettingsService) SellerStats(ctx context.Context, sellerID string) (map
 		"favorites_received": favorites,
 	}, nil
 }
+
+// PublicSettings returns only the settings that are safe to expose publicly
+// (a whitelist — admin-only settings never leak).
+func (s *SettingsService) PublicSettings(ctx context.Context) map[string]int {
+	return map[string]int{
+		domain.SettingMaxImagesPerProduct: GetIntSetting(
+			ctx, s.repo, domain.SettingMaxImagesPerProduct, domain.MaxImagesPerProduct,
+		),
+	}
+}
