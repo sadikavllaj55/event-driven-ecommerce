@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../hooks/useCart';
-import { ROUTES } from '../constants/routes';
 import toast from 'react-hot-toast';
+import { useCart } from '../hooks/useCart';
+import { useCartProducts } from '../hooks/useCartProducts';
+import { ROUTES } from '../constants/routes';
+import { getErrorMessage } from '../utils/errors';
+import type { Order } from '../types';
 
 export default function CartPage() {
   const { cartQuery, removeItem, checkout } = useCart();
-  const [orderResult, setOrderResult] = useState<any>(null);
+  const [orderResult, setOrderResult] = useState<Order | null>(null);
 
-  const cart = cartQuery.data;
-  const items = cart?.items ?? [];
+  const items = cartQuery.data?.items ?? [];
+  const products = useCartProducts(items);
   const totalCents = items.reduce(
     (sum, it) => sum + it.price_cents * it.quantity,
     0,
@@ -18,10 +21,40 @@ export default function CartPage() {
   if (cartQuery.isLoading)
     return <p className="text-gray-500">Loading cart…</p>;
 
+  function handleCheckout() {
+    checkout.mutate(undefined, {
+      onSuccess: (order) => {
+        setOrderResult(order);
+        toast.success('Order placed! 🎉');
+      },
+      onError: (err) => toast.error(getErrorMessage(err, 'Checkout failed')),
+    });
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-xl font-semibold text-gray-900 mb-4">Your cart 🛒</h1>
 
+      {/* Order success */}
+      {orderResult && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+          <h2 className="font-bold text-green-800">Order placed! 🎉</h2>
+          <p className="text-sm text-green-700 mt-1">
+            Order #{orderResult.id.slice(0, 8)} · total €
+            {(orderResult.total_cents / 100).toFixed(2)}
+          </p>
+          <div className="flex gap-4 mt-3 text-sm">
+            <Link to={ROUTES.orders} className="text-teal-600 hover:underline">
+              View orders →
+            </Link>
+            <Link to={ROUTES.home} className="text-teal-600 hover:underline">
+              Continue shopping →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Empty cart */}
       {items.length === 0 && !orderResult && (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <p className="text-gray-500">Your cart is empty.</p>
@@ -34,53 +67,67 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Order success */}
-      {orderResult && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <div className="text-3xl mb-2">🎉</div>
-          <h2 className="font-bold text-green-800">Order placed!</h2>
-          <p className="text-sm text-green-700 mt-1">
-            Order{' '}
-            <span className="font-mono">{orderResult.id?.slice(0, 8)}</span> —
-            status: <span className="font-semibold">{orderResult.status}</span>{' '}
-            — total: €{(orderResult.total_cents / 100).toFixed(2)}
-          </p>
-          <Link
-            to="/"
-            className="inline-block mt-3 text-teal-600 hover:underline text-sm"
-          >
-            Continue shopping →
-          </Link>
-        </div>
-      )}
-
-      {/* Cart items */}
+      {/* Items */}
       {items.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm divide-y">
-          {items.map((it) => (
-            <div
-              key={it.product_id}
-              className="flex items-center justify-between p-4"
-            >
-              <div>
-                <p className="text-sm font-mono text-gray-700">
-                  {it.product_id.slice(0, 8)}…
-                </p>
-                <p className="text-xs text-gray-500">Qty: {it.quantity}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="font-medium">
-                  €{(it.price_cents / 100).toFixed(2)}
-                </span>
-                <button
-                  onClick={() => removeItem.mutate(it.product_id)}
-                  className="text-red-500 text-sm hover:underline"
+          {items.map((it) => {
+            const product = products[it.product_id];
+            const image = product?.images?.[0]?.image_url;
+
+            return (
+              <div key={it.product_id} className="flex items-center gap-4 p-4">
+                {/* Thumbnail */}
+                <Link
+                  to={ROUTES.product(it.product_id)}
+                  className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center"
                 >
-                  Remove
-                </button>
+                  {image ? (
+                    <img
+                      src={image}
+                      alt={product?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl">🛍️</span>
+                  )}
+                </Link>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  {product ? (
+                    <Link
+                      to={ROUTES.product(it.product_id)}
+                      className="font-medium text-gray-900 hover:underline truncate block"
+                    >
+                      {product.name}
+                    </Link>
+                  ) : (
+                    <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {[product?.brand, product?.size]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    {product?.brand || product?.size ? ' · ' : ''}Qty{' '}
+                    {it.quantity}
+                  </p>
+                </div>
+
+                {/* Price + remove */}
+                <div className="text-right">
+                  <p className="font-semibold text-gray-900">
+                    €{((it.price_cents * it.quantity) / 100).toFixed(2)}
+                  </p>
+                  <button
+                    onClick={() => removeItem.mutate(it.product_id)}
+                    className="text-red-500 text-xs hover:underline mt-1"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Total + checkout */}
           <div className="p-4">
@@ -91,19 +138,7 @@ export default function CartPage() {
               </span>
             </div>
             <button
-              onClick={() =>
-                checkout.mutate(undefined, {
-                  onSuccess: (data) => {
-                    setOrderResult(data);
-                    if (data.status === 'paid') {
-                      toast.success('Order placed & paid! 🎉');
-                    } else {
-                      toast('Order placed — processing…', { icon: '⏳' });
-                    }
-                  },
-                  onError: () => toast.error('Checkout failed'),
-                })
-              }
+              onClick={handleCheckout}
               disabled={checkout.isPending}
               className="w-full bg-teal-600 text-white py-3 rounded-full font-medium hover:bg-teal-700 disabled:opacity-50"
             >
