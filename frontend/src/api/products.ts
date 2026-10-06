@@ -41,6 +41,16 @@ export const productApi = {
     const res = await api.post<Product>('/products', input);
     return res.data;
   },
+  // Update a listing (send ALL fields — the backend overwrites every column)
+  update: async (id: string, input: CreateProductInput): Promise<Product> => {
+    const res = await api.put<Product>(`/products/${id}`, input);
+    return res.data;
+  },
+
+  // Delete one image from a listing
+  deleteImage: async (productId: string, imageId: string): Promise<void> => {
+    await api.delete(`/products/${productId}/images/${imageId}`);
+  },
 
   // Change status (active/inactive)
   setStatus: async (id: string, status: string): Promise<void> => {

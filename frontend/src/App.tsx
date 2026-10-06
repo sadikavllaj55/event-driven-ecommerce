@@ -18,6 +18,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminSettings from './pages/admin/AdminSettings';
+import EditProductPage from './pages/seller/EditProductPage';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
         <Route path={ROUTES.adminUsers} element={<AdminUsers />} />
         <Route path={ROUTES.adminCategories} element={<AdminCategories />} />
         <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
+        <Route path={ROUTES.productEdit} element={<EditProductPage />} />
       </Route>
     </Routes>
   );

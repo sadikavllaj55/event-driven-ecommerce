@@ -22,6 +22,8 @@ export interface Product {
   status: string;
   image_url: string;
   images: ProductImage[];
+  category_id: string | null;
+
   created_at: string;
 }
 

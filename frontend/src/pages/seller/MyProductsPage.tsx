@@ -134,6 +134,13 @@ export default function MyProductsPage() {
 
               {/* Actions */}
               <div className="flex flex-col gap-2 text-sm">
+                <Link
+                  to={ROUTES.editProduct(p.id)}
+                  className="text-teal-600 hover:underline"
+                >
+                  Edit
+                </Link>
+
                 {p.status === 'active' ? (
                   <button
                     onClick={() =>
