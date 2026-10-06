@@ -74,6 +74,12 @@ export default function AdminDashboard() {
         >
           Manage Users →
         </Link>
+        <Link
+          to={ROUTES.adminCategories}
+          className="bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50"
+        >
+          Manage Categories →
+        </Link>
       </div>
     </div>
   );

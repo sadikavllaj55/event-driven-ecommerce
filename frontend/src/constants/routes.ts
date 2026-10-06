@@ -23,4 +23,5 @@ export const ROUTES = {
   // Admin
   adminDashboard: '/admin',
   adminUsers: '/admin/users',
+  adminCategories: '/admin/categories',
 } as const;

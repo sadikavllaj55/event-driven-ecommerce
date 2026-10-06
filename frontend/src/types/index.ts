@@ -51,7 +51,7 @@ export interface Category {
   name: string;
   slug: string;
   parent_id: string | null;
-  children: Category[];
+  children?: Category[];
 }
 
 // Cart
