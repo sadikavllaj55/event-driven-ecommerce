@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { productApi } from '../api/products';
+import { queryKeys } from '../api/queryKeys';
 import type { PagedProducts } from '../types';
 import ProductCard from '../components/ProductCard';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
@@ -23,7 +24,7 @@ export default function ProductsPage() {
 
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: [
-      'products',
+      ...queryKeys.products,
       { page, search: debouncedSearch, category, department },
     ],
     queryFn: async () => {

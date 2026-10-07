@@ -1,17 +1,18 @@
 import { api } from './client';
 import type { PagedProducts, Profile } from '../types';
+import { pagedProductsSchema, profileSchema } from './schemas';
 
 export const profileApi = {
   // Public profile (no auth needed)
   get: async (userId: string): Promise<Profile> => {
     const res = await api.get<Profile>(`/users/${userId}/profile`);
-    return res.data;
+    return profileSchema.parse(res.data);
   },
 
   // Current user's bio
   updateBio: async (bio: string): Promise<Profile> => {
     const res = await api.put<Profile>('/profile', { bio });
-    return res.data;
+    return profileSchema.parse(res.data);
   },
 
   // Current user's avatar (same "image" field name as product uploads)
@@ -21,7 +22,7 @@ export const profileApi = {
     const res = await api.post<Profile>('/profile/avatar', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data;
+    return profileSchema.parse(res.data);
   },
 
   // A seller's ACTIVE products (public shop)
@@ -33,6 +34,6 @@ export const profileApi = {
     const res = await api.get<PagedProducts>(`/sellers/${sellerId}/products`, {
       params: { page, limit },
     });
-    return res.data;
+    return pagedProductsSchema.parse(res.data);
   },
 };

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { productApi } from '../../api/products';
+import { invalidateListingQueries, queryKeys } from '../../api/queryKeys';
 import { useAuth } from '../../auth/AuthContext';
-import { useImageUpload } from '../../hooks/useImageUpload';
+import { ImageUploadError, useImageUpload } from '../../hooks/useImageUpload';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
 import ProductForm, {
@@ -18,6 +20,8 @@ export default function EditProductPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { uploadImages } = useImageUpload();
+  const [pendingPhotos, setPendingPhotos] = useState<File[] | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   // Same key as ProductDetailPage → shared cache
   const {
@@ -25,7 +29,7 @@ export default function EditProductPage() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['product', id],
+    queryKey: queryKeys.product(id),
     queryFn: () => productApi.getById(id!),
     enabled: !!id,
   });
@@ -41,9 +45,7 @@ export default function EditProductPage() {
   }
 
   function refreshCaches() {
-    qc.invalidateQueries({ queryKey: ['product', id] });
-    qc.invalidateQueries({ queryKey: ['my-products'] });
-    qc.invalidateQueries({ queryKey: ['products'] });
+    void invalidateListingQueries(qc, user?.sub, id);
   }
 
   async function handleRemoveImage(image: ExistingImage) {
@@ -59,10 +61,23 @@ export default function EditProductPage() {
 
   async function handleUpdate(input: CreateProductInput, newImages: File[]) {
     await productApi.update(product!.id, input);
-    await uploadImages(`/products/${product!.id}/images`, newImages);
-    refreshCaches();
-    toast.success('Listing updated ✅');
-    navigate(ROUTES.myProducts);
+    await finishPhotos(newImages);
+  }
+
+  async function finishPhotos(files: File[]) {
+    setRetrying(true);
+    try {
+      await uploadImages(`/products/${product!.id}/images`, files);
+      setPendingPhotos(null);
+      toast.success('Listing updated ✅');
+      navigate(ROUTES.myProducts);
+    } catch (error) {
+      if (!(error instanceof ImageUploadError)) throw error;
+      setPendingPhotos(error.remainingFiles);
+    } finally {
+      setRetrying(false);
+      refreshCaches();
+    }
   }
 
   return (
@@ -77,7 +92,13 @@ export default function EditProductPage() {
         </Link>
       </div>
 
-      <ProductForm
+      {pendingPhotos ? <div role="alert">
+        <p>Changes saved, but some photos failed to upload.</p>
+        <button disabled={retrying} onClick={() => void finishPhotos(pendingPhotos)}>
+          {retrying ? 'Uploading...' : 'Retry photos'}
+        </button>
+        <button onClick={() => navigate(ROUTES.myProducts)}>Continue to my listings</button>
+      </div> : <ProductForm
         key={product.id} // remount if we navigate to a different product
         initialValues={productToFormValues(product)}
         existingImages={product.images ?? []}
@@ -85,7 +106,7 @@ export default function EditProductPage() {
         submitLabel="Save changes"
         submittingLabel="Saving…"
         onSubmit={handleUpdate}
-      />
+      />}
     </div>
   );
 }

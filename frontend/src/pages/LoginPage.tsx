@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { AxiosError } from 'axios';
 import { getErrorMessage } from '../utils/errors';
+import { loginResponseSchema } from '../api/schemas';
 
 type Mode = 'login' | 'register';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath: unknown = location.state?.from;
+  const destination = typeof requestedPath === 'string' && requestedPath.startsWith('/') && !requestedPath.startsWith('//')
+    ? requestedPath : ROUTES.home;
 
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -41,8 +46,8 @@ export default function LoginPage() {
 
       // Login
       const res = await api.post('/login', { email, password });
-      login(res.data.token);
-      navigate(ROUTES.home);
+      login(loginResponseSchema.parse(res.data).token);
+      navigate(destination, { replace: true });
     } catch (err) {
       // 428 = 2FA required
       if (err instanceof AxiosError && err.response?.status === 428) {
@@ -59,8 +64,8 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await api.post('/login/2fa', { email, code });
-      login(res.data.token);
-      navigate('/');
+      login(loginResponseSchema.parse(res.data).token);
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(getErrorMessage(err, 'Invalid code'));
     }

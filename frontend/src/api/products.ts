@@ -1,5 +1,6 @@
 import { api } from './client';
 import type { PagedProducts, Product, CreateProductInput } from '../types';
+import { pagedProductsSchema, productSchema } from './schemas';
 
 export const productApi = {
   // Browse (paginated)
@@ -7,7 +8,7 @@ export const productApi = {
     const res = await api.get<PagedProducts>('/products', {
       params: { page, limit },
     });
-    return res.data;
+    return pagedProductsSchema.parse(res.data);
   },
 
   // Search (Elasticsearch)
@@ -19,13 +20,13 @@ export const productApi = {
     const res = await api.get<Product[]>('/products/search', {
       params: { q: query, category, gender },
     });
-    return res.data;
+    return productSchema.array().parse(res.data);
   },
 
   // Single product
   getById: async (id: string): Promise<Product> => {
     const res = await api.get<Product>(`/products/${id}`);
-    return res.data;
+    return productSchema.parse(res.data);
   },
 
   // Seller's own listings
@@ -33,18 +34,18 @@ export const productApi = {
     const res = await api.get<PagedProducts>('/products/mine', {
       params: { page, limit },
     });
-    return res.data;
+    return pagedProductsSchema.parse(res.data);
   },
 
   // Create a listing
   create: async (input: CreateProductInput): Promise<Product> => {
     const res = await api.post<Product>('/products', input);
-    return res.data;
+    return productSchema.parse(res.data);
   },
   // Update a listing (send ALL fields — the backend overwrites every column)
   update: async (id: string, input: CreateProductInput): Promise<Product> => {
     const res = await api.put<Product>(`/products/${id}`, input);
-    return res.data;
+    return productSchema.parse(res.data);
   },
 
   // Delete one image from a listing

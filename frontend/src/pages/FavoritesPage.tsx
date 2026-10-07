@@ -8,6 +8,9 @@ export default function FavoritesPage() {
   const { favoritesQuery } = useFavorites();
   const favorites = favoritesQuery.data ?? [];
 
+  if (favoritesQuery.isError)
+    return <div role="alert">Failed to load favorites. <button onClick={() => void favoritesQuery.refetch()}>Retry</button></div>;
+
   if (favoritesQuery.isLoading)
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

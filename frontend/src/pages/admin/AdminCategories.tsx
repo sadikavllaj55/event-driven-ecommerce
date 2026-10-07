@@ -1,3 +1,4 @@
+import { queryKeys } from '../../api/queryKeys';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Link } from 'react-router-dom';
@@ -14,12 +15,12 @@ export default function AdminCategories() {
   const [newName, setNewName] = useState('');
 
   const { data: categories, isLoading } = useQuery({
-    queryKey: ['categories'],
+    queryKey: queryKeys.categories,
     queryFn: categoryApi.list,
   });
 
   // Invalidating ['categories'] also refreshes the homepage nav + Sell form dropdown
-  const refresh = () => qc.invalidateQueries({ queryKey: ['categories'] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.categories });
 
   const create = useMutation({
     mutationFn: ({

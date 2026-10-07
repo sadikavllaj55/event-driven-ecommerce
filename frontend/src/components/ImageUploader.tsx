@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Props {
   images: File[];
@@ -97,11 +97,7 @@ export default function ImageUploader({
               key={i}
               className="relative w-24 h-24 rounded-lg overflow-hidden border group"
             >
-              <img
-                src={URL.createObjectURL(file)}
-                alt={`preview ${i + 1}`}
-                className="w-full h-full object-cover"
-              />
+              <ImagePreview file={file} position={i + 1} />
               <button
                 type="button"
                 onClick={() => remove(i)}
@@ -129,4 +125,18 @@ export default function ImageUploader({
       />
     </div>
   );
+}
+
+function ImagePreview({ file, position }: { file: File; position: number }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const preview = URL.createObjectURL(file);
+    const image = imageRef.current;
+    if (image) image.src = preview;
+    return () => {
+      image?.removeAttribute('src');
+      URL.revokeObjectURL(preview);
+    };
+  }, [file]);
+  return <img ref={imageRef} alt={`preview ${position}`} className="w-full h-full object-cover" />;
 }

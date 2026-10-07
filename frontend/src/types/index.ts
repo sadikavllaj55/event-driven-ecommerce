@@ -1,3 +1,10 @@
+import type { z } from 'zod';
+import type { roleSchema, orderStatusSchema, conditionSchema } from '../api/schemas';
+
+export type Role = z.infer<typeof roleSchema>;
+export type OrderStatus = z.infer<typeof orderStatusSchema>;
+export type ProductCondition = z.infer<typeof conditionSchema>;
+
 export interface ProductImage {
   id: string;
   image_url: string;
@@ -15,7 +22,7 @@ export interface Product {
   gender: string;
   brand: string;
   model_code: string;
-  condition: string;
+  condition: ProductCondition;
   material: string;
   color: string;
   size: string;
@@ -42,7 +49,7 @@ export interface CreateProductInput {
   size: string;
   color: string;
   material: string;
-  condition: string;
+  condition: ProductCondition;
   gender: string;
   category_id?: string | null;
 }
@@ -72,13 +79,13 @@ export interface OrderItem {
   product_id: string;
   quantity: number;
   price_cents: number;
-  status: string;
+  status?: string;
 }
 
 export interface Order {
   id: string;
   buyer_id: string;
-  status: string;
+  status: OrderStatus;
   total_cents: number;
   items: OrderItem[];
   created_at: string;

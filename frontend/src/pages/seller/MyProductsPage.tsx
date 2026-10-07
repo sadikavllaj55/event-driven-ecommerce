@@ -8,6 +8,8 @@ import {
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { productApi } from '../../api/products';
+import { invalidateListingQueries, queryKeys } from '../../api/queryKeys';
+import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
 
@@ -20,11 +22,13 @@ const statusStyles: Record<string, string> = {
 
 export default function MyProductsPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['my-products', page],
+    queryKey: [...queryKeys.myProducts(user?.sub), page],
     queryFn: () => productApi.listMine(page, LISTINGS_PER_PAGE),
+    enabled: !!user,
     placeholderData: keepPreviousData, // keep the current page visible while the next loads
   });
 
@@ -32,11 +36,8 @@ export default function MyProductsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LISTINGS_PER_PAGE));
 
-  // ['my-products'] matches every page (prefix match), so all pages refresh
   function invalidateAll() {
-    qc.invalidateQueries({ queryKey: ['my-products'] });
-    qc.invalidateQueries({ queryKey: ['products'] });
-    qc.invalidateQueries({ queryKey: ['product'] });
+    void invalidateListingQueries(qc, user?.sub);
   }
 
   const setStatus = useMutation({

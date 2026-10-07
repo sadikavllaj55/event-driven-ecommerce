@@ -20,6 +20,8 @@ export default function CartPage() {
 
   if (cartQuery.isLoading)
     return <p className="text-gray-500">Loading cart…</p>;
+  if (cartQuery.isError)
+    return <div role="alert">Failed to load cart. <button onClick={() => void cartQuery.refetch()}>Retry</button></div>;
 
   function handleCheckout() {
     checkout.mutate(undefined, {

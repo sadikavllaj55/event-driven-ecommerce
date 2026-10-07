@@ -1,11 +1,14 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Suspense } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import Footer from './Footer';
+import RouteErrorBoundary from './RouteErrorBoundary';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -81,7 +84,11 @@ export default function Layout() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 w-full flex-1">
-        <Outlet />
+        <RouteErrorBoundary key={location.pathname}>
+          <Suspense fallback={<p role="status" className="text-gray-500">Loading page...</p>}>
+            <Outlet />
+          </Suspense>
+        </RouteErrorBoundary>
       </main>
 
       <Footer />
