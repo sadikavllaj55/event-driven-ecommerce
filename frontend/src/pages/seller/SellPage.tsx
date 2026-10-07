@@ -15,7 +15,10 @@ export default function SellPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { uploadImages } = useImageUpload();
-  const [pendingPhotos, setPendingPhotos] = useState<{ id: string; files: File[] } | null>(null);
+  const [pendingPhotos, setPendingPhotos] = useState<{
+    id: string;
+    files: File[];
+  } | null>(null);
   const [retrying, setRetrying] = useState(false);
 
   if (!user) return <Navigate to={ROUTES.login} replace />;
@@ -45,17 +48,28 @@ export default function SellPage() {
   return (
     <div className="max-w-xl mx-auto bg-white rounded-lg shadow-sm p-6">
       <h1 className="text-xl font-bold text-gray-900 mb-6">Sell an item 🏷️</h1>
-      {pendingPhotos ? <div role="alert">
-        <p>Listing saved, but some photos failed to upload.</p>
-        <button disabled={retrying} onClick={() => void finishPhotos(pendingPhotos.id, pendingPhotos.files)}>
-          {retrying ? 'Uploading...' : 'Retry photos'}
-        </button>
-        <button onClick={() => navigate(ROUTES.myProducts)}>Continue to my listings</button>
-      </div> : <ProductForm
-        submitLabel="List item 🏷️"
-        submittingLabel="Creating…"
-        onSubmit={handleCreate}
-      />}
+      {pendingPhotos ? (
+        <div role="alert">
+          <p>Listing saved, but some photos failed to upload.</p>
+          <button
+            disabled={retrying}
+            onClick={() =>
+              void finishPhotos(pendingPhotos.id, pendingPhotos.files)
+            }
+          >
+            {retrying ? 'Uploading...' : 'Retry photos'}
+          </button>
+          <button onClick={() => navigate(ROUTES.myProducts)}>
+            Continue to my listings
+          </button>
+        </div>
+      ) : (
+        <ProductForm
+          submitLabel="List item 🏷️"
+          submittingLabel="Creating…"
+          onSubmit={handleCreate}
+        />
+      )}
     </div>
   );
 }

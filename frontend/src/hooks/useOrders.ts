@@ -11,9 +11,12 @@ export function useOrders() {
     enabled: !!user,
     refetchInterval: (query) => {
       if (query.state.status === 'error') return false;
-      return query.state.data?.some((order) =>
-        order.status === 'pending' || order.status === 'stock_reserved',
-      ) ? 2000 : false;
+      return query.state.data?.some(
+        (order) =>
+          order.status === 'pending' || order.status === 'stock_reserved',
+      )
+        ? 2000
+        : false;
     },
   });
 }

@@ -11,15 +11,16 @@ const statusStyles: Record<OrderStatus, string> = {
 };
 
 export default function OrdersPage() {
-  const {
-    data: orders,
-    isLoading,
-    isError,
-    refetch,
-  } = useOrders();
+  const { data: orders, isLoading, isError, refetch } = useOrders();
 
   if (isLoading) return <p className="text-gray-500">Loading orders…</p>;
-  if (isError) return <div role="alert">Failed to load orders. <button onClick={() => void refetch()}>Retry</button></div>;
+  if (isError)
+    return (
+      <div role="alert">
+        Failed to load orders.{' '}
+        <button onClick={() => void refetch()}>Retry</button>
+      </div>
+    );
 
   return (
     <div className="max-w-2xl mx-auto">

@@ -87,7 +87,10 @@ export default function AdminUsers() {
                     <select
                       value={u.role}
                       onChange={(e) =>
-                        setRole.mutate({ id: u.id, role: roleSchema.parse(e.target.value) })
+                        setRole.mutate({
+                          id: u.id,
+                          role: roleSchema.parse(e.target.value),
+                        })
                       }
                       disabled={isSelf}
                       className={`text-xs rounded-full px-2 py-1 ${roleStyles[u.role] ?? ''} disabled:opacity-60`}

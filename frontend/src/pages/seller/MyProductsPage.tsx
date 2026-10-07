@@ -12,13 +12,9 @@ import { invalidateListingQueries, queryKeys } from '../../api/queryKeys';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
+import SellerProductRow from './SellerProductRow';
 
 const LISTINGS_PER_PAGE = 10;
-
-const statusStyles: Record<string, string> = {
-  active: 'bg-green-100 text-green-700',
-  inactive: 'bg-gray-100 text-gray-600',
-};
 
 export default function MyProductsPage() {
   const qc = useQueryClient();
@@ -93,87 +89,16 @@ export default function MyProductsPage() {
       <div
         className={`space-y-3 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}
       >
-        {products.map((p) => {
-          const image = p.images?.[0]?.image_url;
-          return (
-            <div
-              key={p.id}
-              className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-4"
-            >
-              {/* Thumbnail */}
-              <Link
-                to={ROUTES.product(p.id)}
-                className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
-              >
-                {image ? (
-                  <img
-                    src={image}
-                    alt={p.name}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl">🛍️</span>
-                )}
-              </Link>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <Link
-                  to={ROUTES.product(p.id)}
-                  className="font-medium text-gray-900 truncate hover:underline block"
-                >
-                  {p.name}
-                </Link>
-                <p className="text-sm text-gray-500">€{p.price}</p>
-                <span
-                  className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${statusStyles[p.status] ?? ''}`}
-                >
-                  {p.status}
-                </span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2 text-sm">
-                <Link
-                  to={ROUTES.editProduct(p.id)}
-                  className="text-teal-600 hover:underline"
-                >
-                  Edit
-                </Link>
-
-                {p.status === 'active' ? (
-                  <button
-                    onClick={() =>
-                      setStatus.mutate({ id: p.id, status: 'inactive' })
-                    }
-                    className="text-gray-600 hover:underline"
-                  >
-                    Pause
-                  </button>
-                ) : (
-                  <button
-                    onClick={() =>
-                      setStatus.mutate({ id: p.id, status: 'active' })
-                    }
-                    className="text-teal-600 hover:underline"
-                  >
-                    Activate
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (window.confirm(`Delete "${p.name}"?`))
-                      remove.mutate(p.id);
-                  }}
-                  className="text-red-500 hover:underline"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {products.map((product) => (
+          <SellerProductRow
+            key={product.id}
+            product={product}
+            onStatusChange={(id, status) => setStatus.mutate({ id, status })}
+            onDelete={(id, name) => {
+              if (window.confirm(`Delete "${name}"?`)) remove.mutate(id);
+            }}
+          />
+        ))}
       </div>
 
       {/* Pagination */}

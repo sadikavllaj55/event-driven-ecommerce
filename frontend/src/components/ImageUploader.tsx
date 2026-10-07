@@ -138,5 +138,11 @@ function ImagePreview({ file, position }: { file: File; position: number }) {
       URL.revokeObjectURL(preview);
     };
   }, [file]);
-  return <img ref={imageRef} alt={`preview ${position}`} className="w-full h-full object-cover" />;
+  return (
+    <img
+      ref={imageRef}
+      alt={`preview ${position}`}
+      className="w-full h-full object-cover"
+    />
+  );
 }

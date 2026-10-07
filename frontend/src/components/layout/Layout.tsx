@@ -85,7 +85,13 @@ export default function Layout() {
 
       <main className="max-w-6xl mx-auto px-4 py-6 w-full flex-1">
         <RouteErrorBoundary key={location.pathname}>
-          <Suspense fallback={<p role="status" className="text-gray-500">Loading page...</p>}>
+          <Suspense
+            fallback={
+              <p role="status" className="text-gray-500">
+                Loading page...
+              </p>
+            }
+          >
             <Outlet />
           </Suspense>
         </RouteErrorBoundary>

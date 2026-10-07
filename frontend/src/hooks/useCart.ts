@@ -32,10 +32,11 @@ export function useCart() {
 
   const checkout = useMutation({
     mutationFn: cartApi.checkout,
-    onSuccess: () => Promise.all([
-      qc.invalidateQueries({ queryKey: cartKey }),
-      qc.invalidateQueries({ queryKey: queryKeys.orders(user?.sub) }),
-    ]),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: cartKey }),
+        qc.invalidateQueries({ queryKey: queryKeys.orders(user?.sub) }),
+      ]),
   });
 
   return { cartQuery, addItem, removeItem, checkout };

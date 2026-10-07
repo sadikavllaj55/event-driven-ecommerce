@@ -11,11 +11,19 @@ function BrokenPage(): never {
 
 it('keeps navigation usable after a route fails and resets on navigation', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  renderApp(<Routes><Route element={<Layout />}>
-    <Route path="/" element={<BrokenPage />} />
-    <Route path="/login" element={<h1>Working page</h1>} />
-  </Route></Routes>);
-  expect(screen.getByRole('alert')).toHaveTextContent('This page could not be loaded');
+  renderApp(
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<BrokenPage />} />
+        <Route path="/login" element={<h1>Working page</h1>} />
+      </Route>
+    </Routes>,
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'This page could not be loaded',
+  );
   await userEvent.click(screen.getByRole('link', { name: 'Log in' }));
-  expect(screen.getByRole('heading', { name: 'Working page' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'Working page' }),
+  ).toBeInTheDocument();
 });

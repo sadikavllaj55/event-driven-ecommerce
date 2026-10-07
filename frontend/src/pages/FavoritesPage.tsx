@@ -9,7 +9,12 @@ export default function FavoritesPage() {
   const favorites = favoritesQuery.data ?? [];
 
   if (favoritesQuery.isError)
-    return <div role="alert">Failed to load favorites. <button onClick={() => void favoritesQuery.refetch()}>Retry</button></div>;
+    return (
+      <div role="alert">
+        Failed to load favorites.{' '}
+        <button onClick={() => void favoritesQuery.refetch()}>Retry</button>
+      </div>
+    );
 
   if (favoritesQuery.isLoading)
     return (

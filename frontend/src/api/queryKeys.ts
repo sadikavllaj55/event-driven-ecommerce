@@ -8,7 +8,8 @@ export const queryKeys = {
   myProducts: (userId?: string) => ['private', userId, 'my-products'] as const,
   adminStats: (userId?: string) => ['private', userId, 'admin-stats'] as const,
   adminUsers: (userId?: string) => ['private', userId, 'admin-users'] as const,
-  adminSettings: (userId?: string) => ['private', userId, 'admin-settings'] as const,
+  adminSettings: (userId?: string) =>
+    ['private', userId, 'admin-settings'] as const,
   products: ['products'] as const,
   product: (id?: string) => ['product', id] as const,
   allProducts: ['product'] as const,
@@ -18,11 +19,19 @@ export const queryKeys = {
   sellerProducts: (id?: string) => ['seller-products', id] as const,
 };
 
-export function invalidateListingQueries(client: QueryClient, userId?: string, productId?: string) {
+export function invalidateListingQueries(
+  client: QueryClient,
+  userId?: string,
+  productId?: string,
+) {
   return Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.myProducts(userId) }),
     client.invalidateQueries({ queryKey: queryKeys.products }),
-    client.invalidateQueries({ queryKey: productId ? queryKeys.product(productId) : queryKeys.allProducts }),
+    client.invalidateQueries({
+      queryKey: productId
+        ? queryKeys.product(productId)
+        : queryKeys.allProducts,
+    }),
     client.invalidateQueries({ queryKey: queryKeys.sellerProducts(userId) }),
     client.invalidateQueries({ queryKey: queryKeys.favorites(userId) }),
   ]);

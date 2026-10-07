@@ -22,9 +22,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 function decodeToken(token: string): AuthUser | null {
   try {
     const encoded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const bytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
-    const payload = authClaimsSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
-    if (payload.exp !== undefined && payload.exp <= Date.now() / 1000) return null;
+    const bytes = Uint8Array.from(atob(encoded), (character) =>
+      character.charCodeAt(0),
+    );
+    const payload = authClaimsSchema.parse(
+      JSON.parse(new TextDecoder().decode(bytes)),
+    );
+    if (payload.exp !== undefined && payload.exp <= Date.now() / 1000)
+      return null;
     return { sub: payload.sub, email: payload.email, role: payload.role };
   } catch {
     return null;

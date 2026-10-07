@@ -92,21 +92,30 @@ export default function EditProductPage() {
         </Link>
       </div>
 
-      {pendingPhotos ? <div role="alert">
-        <p>Changes saved, but some photos failed to upload.</p>
-        <button disabled={retrying} onClick={() => void finishPhotos(pendingPhotos)}>
-          {retrying ? 'Uploading...' : 'Retry photos'}
-        </button>
-        <button onClick={() => navigate(ROUTES.myProducts)}>Continue to my listings</button>
-      </div> : <ProductForm
-        key={product.id} // remount if we navigate to a different product
-        initialValues={productToFormValues(product)}
-        existingImages={product.images ?? []}
-        onRemoveExistingImage={handleRemoveImage}
-        submitLabel="Save changes"
-        submittingLabel="Saving…"
-        onSubmit={handleUpdate}
-      />}
+      {pendingPhotos ? (
+        <div role="alert">
+          <p>Changes saved, but some photos failed to upload.</p>
+          <button
+            disabled={retrying}
+            onClick={() => void finishPhotos(pendingPhotos)}
+          >
+            {retrying ? 'Uploading...' : 'Retry photos'}
+          </button>
+          <button onClick={() => navigate(ROUTES.myProducts)}>
+            Continue to my listings
+          </button>
+        </div>
+      ) : (
+        <ProductForm
+          key={product.id} // remount if we navigate to a different product
+          initialValues={productToFormValues(product)}
+          existingImages={product.images ?? []}
+          onRemoveExistingImage={handleRemoveImage}
+          submitLabel="Save changes"
+          submittingLabel="Saving…"
+          onSubmit={handleUpdate}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,9 @@
 import type { z } from 'zod';
-import type { roleSchema, orderStatusSchema, conditionSchema } from '../api/schemas';
+import type {
+  roleSchema,
+  orderStatusSchema,
+  conditionSchema,
+} from '../api/schemas';
 
 export type Role = z.infer<typeof roleSchema>;
 export type OrderStatus = z.infer<typeof orderStatusSchema>;

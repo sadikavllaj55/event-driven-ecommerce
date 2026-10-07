@@ -1,6 +1,9 @@
 import { Component, type ReactNode } from 'react';
 
-export default class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+export default class RouteErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
 
   static getDerivedStateFromError() {
@@ -9,10 +12,19 @@ export default class RouteErrorBoundary extends Component<{ children: ReactNode 
 
   render() {
     if (this.state.failed) {
-      return <section role="alert">
-        <h1 className="text-xl font-semibold mb-3">This page could not be loaded</h1>
-        <button className="text-teal-600 hover:underline" onClick={() => window.location.reload()}>Reload page</button>
-      </section>;
+      return (
+        <section role="alert">
+          <h1 className="text-xl font-semibold mb-3">
+            This page could not be loaded
+          </h1>
+          <button
+            className="text-teal-600 hover:underline"
+            onClick={() => window.location.reload()}
+          >
+            Reload page
+          </button>
+        </section>
+      );
     }
     return this.props.children;
   }

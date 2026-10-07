@@ -17,7 +17,12 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: profile, isLoading, isError, refetch } = useQuery({
+  const {
+    data: profile,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.profile(user?.sub),
     queryFn: () => profileApi.get(user!.sub),
     enabled: !!user,
@@ -38,7 +43,13 @@ export default function ProfilePage() {
   });
 
   if (!user) return <Navigate to={ROUTES.login} replace />;
-  if (isError) return <div role="alert">Failed to load profile. <button onClick={() => void refetch()}>Retry</button></div>;
+  if (isError)
+    return (
+      <div role="alert">
+        Failed to load profile.{' '}
+        <button onClick={() => void refetch()}>Retry</button>
+      </div>
+    );
   if (isLoading || !profile)
     return <p className="text-gray-500">Loading profile…</p>;
 

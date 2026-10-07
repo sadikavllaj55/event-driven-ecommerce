@@ -54,10 +54,17 @@ function App() {
           <Route path={ROUTES.adminCategories} element={<AdminCategories />} />
           <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
         </Route>
-        <Route path="*" element={<section>
-          <h1 className="text-xl font-semibold mb-3">Page not found</h1>
-          <Link to={ROUTES.home} className="text-teal-600 hover:underline">Back to marketplace</Link>
-        </section>} />
+        <Route
+          path="*"
+          element={
+            <section>
+              <h1 className="text-xl font-semibold mb-3">Page not found</h1>
+              <Link to={ROUTES.home} className="text-teal-600 hover:underline">
+                Back to marketplace
+              </Link>
+            </section>
+          }
+        />
       </Route>
     </Routes>
   );

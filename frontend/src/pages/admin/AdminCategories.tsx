@@ -20,7 +20,8 @@ export default function AdminCategories() {
   });
 
   // Invalidating ['categories'] also refreshes the homepage nav + Sell form dropdown
-  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.categories });
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.categories });
 
   const create = useMutation({
     mutationFn: ({

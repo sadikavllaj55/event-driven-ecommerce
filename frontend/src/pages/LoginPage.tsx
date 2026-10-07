@@ -14,8 +14,12 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestedPath: unknown = location.state?.from;
-  const destination = typeof requestedPath === 'string' && requestedPath.startsWith('/') && !requestedPath.startsWith('//')
-    ? requestedPath : ROUTES.home;
+  const destination =
+    typeof requestedPath === 'string' &&
+    requestedPath.startsWith('/') &&
+    !requestedPath.startsWith('//')
+      ? requestedPath
+      : ROUTES.home;
 
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');

@@ -7,7 +7,9 @@ import { renderApp, tokenFor } from './test/helpers';
 
 function publicHandlers() {
   server.use(
-    http.get('http://localhost:8080/products', () => HttpResponse.json({ products: [], total: 0, page: 1, limit: 12 })),
+    http.get('http://localhost:8080/products', () =>
+      HttpResponse.json({ products: [], total: 0, page: 1, limit: 12 }),
+    ),
     http.get('http://localhost:8080/categories', () => HttpResponse.json([])),
   );
 }
@@ -31,7 +33,14 @@ it('renders a not-found page for unknown URLs', async () => {
 });
 
 it('does not authenticate an expired token', async () => {
-  const payload = btoa(JSON.stringify({ sub: 'buyer-1', email: 'buyer-1@example.com', role: 'buyer', exp: 1 }));
+  const payload = btoa(
+    JSON.stringify({
+      sub: 'buyer-1',
+      email: 'buyer-1@example.com',
+      role: 'buyer',
+      exp: 1,
+    }),
+  );
   localStorage.setItem('token', `header.${payload}.signature`);
   renderApp(<App />, '/orders');
   await screen.findByRole('heading', { name: 'Log in' });

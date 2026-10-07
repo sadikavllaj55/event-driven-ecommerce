@@ -24,19 +24,30 @@ function FavoritesProbe() {
 function AccountCart() {
   const { login, logout } = useAuth();
   const { cartQuery } = useCart();
-  return <>
-    <span>{cartQuery.data?.buyer_id ?? 'No cached cart'}</span>
-    <button onClick={() => { logout(); login(tokenFor('buyer-2')); }}>Switch account</button>
-  </>;
+  return (
+    <>
+      <span>{cartQuery.data?.buyer_id ?? 'No cached cart'}</span>
+      <button
+        onClick={() => {
+          logout();
+          login(tokenFor('buyer-2'));
+        }}
+      >
+        Switch account
+      </button>
+    </>
+  );
 }
 
 describe('frontend account and failure flows', () => {
   it('does not fetch private favorites for a guest', async () => {
     let requests = 0;
-    server.use(http.get(`${base}/favorites`, () => {
-      requests += 1;
-      return HttpResponse.json([]);
-    }));
+    server.use(
+      http.get(`${base}/favorites`, () => {
+        requests += 1;
+        return HttpResponse.json([]);
+      }),
+    );
     renderApp(<FavoritesProbe />);
     await screen.findByText('idle');
     expect(requests).toBe(0);
@@ -45,29 +56,55 @@ describe('frontend account and failure flows', () => {
   it('lets guests browse public listings', async () => {
     let privateRequests = 0;
     server.use(
-      http.get(`${base}/products`, () => HttpResponse.json({ products: [product], total: 1, page: 1, limit: 12 })),
+      http.get(`${base}/products`, () =>
+        HttpResponse.json({
+          products: [product],
+          total: 1,
+          page: 1,
+          limit: 12,
+        }),
+      ),
       http.get(`${base}/categories`, () => HttpResponse.json([])),
-      http.get(`${base}/favorites`, () => { privateRequests += 1; return HttpResponse.json([]); }),
+      http.get(`${base}/favorites`, () => {
+        privateRequests += 1;
+        return HttpResponse.json([]);
+      }),
     );
     renderApp(<ProductsPage />);
     await screen.findByText('Blue jacket');
-    await act(async () => { await Promise.resolve(); });
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(privateRequests).toBe(0);
   });
 
   it('never displays the previous account cart while the next account loads', async () => {
     localStorage.setItem('token', tokenFor('buyer-1'));
     let release!: () => void;
-    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let secondRequested = false;
-    server.use(http.get(`${base}/cart`, async ({ request }) => {
-      const second = request.headers.get('authorization')?.includes(tokenFor('buyer-2'));
-      if (second) { secondRequested = true; await pending; }
-      return HttpResponse.json({ buyer_id: second ? 'buyer-2' : 'buyer-1', items: [] });
-    }));
+    server.use(
+      http.get(`${base}/cart`, async ({ request }) => {
+        const second = request.headers
+          .get('authorization')
+          ?.includes(tokenFor('buyer-2'));
+        if (second) {
+          secondRequested = true;
+          await pending;
+        }
+        return HttpResponse.json({
+          buyer_id: second ? 'buyer-2' : 'buyer-1',
+          items: [],
+        });
+      }),
+    );
     renderApp(<AccountCart />);
     await screen.findByText('buyer-1');
-    await userEvent.click(screen.getByRole('button', { name: 'Switch account' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Switch account' }),
+    );
     expect(screen.queryByText('buyer-1')).not.toBeInTheDocument();
     await waitFor(() => expect(secondRequested).toBe(true));
     release();
@@ -76,7 +113,12 @@ describe('frontend account and failure flows', () => {
 
   it('shows a profile error instead of loading forever', async () => {
     localStorage.setItem('token', tokenFor('buyer-1'));
-    server.use(http.get(`${base}/users/buyer-1/profile`, () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      http.get(
+        `${base}/users/buyer-1/profile`,
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
     renderApp(<ProfilePage />);
     await screen.findByText(/failed to load profile/i);
     expect(screen.queryByText(/loading profile/i)).not.toBeInTheDocument();
@@ -84,7 +126,9 @@ describe('frontend account and failure flows', () => {
 
   it('does not describe a failed cart request as an empty cart', async () => {
     localStorage.setItem('token', tokenFor('buyer-1'));
-    server.use(http.get(`${base}/cart`, () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      http.get(`${base}/cart`, () => new HttpResponse(null, { status: 500 })),
+    );
     renderApp(<CartPage />);
     await screen.findByText(/failed to load cart/i);
     expect(screen.queryByText('Your cart is empty.')).not.toBeInTheDocument();
@@ -96,15 +140,25 @@ describe('frontend account and failure flows', () => {
     let uploads = 0;
     server.use(
       http.get(`${base}/categories`, () => HttpResponse.json([])),
-      http.get(`${base}/settings/public`, () => HttpResponse.json({ max_images_per_product: 7 })),
-      http.post(`${base}/products`, () => { creations += 1; return HttpResponse.json(product); }),
+      http.get(`${base}/settings/public`, () =>
+        HttpResponse.json({ max_images_per_product: 7 }),
+      ),
+      http.post(`${base}/products`, () => {
+        creations += 1;
+        return HttpResponse.json(product);
+      }),
       http.post(`${base}/products/product-1/images`, () => {
         uploads += 1;
-        return uploads === 2 ? new HttpResponse(null, { status: 500 }) : HttpResponse.json({});
+        return uploads === 2
+          ? new HttpResponse(null, { status: 500 })
+          : HttpResponse.json({});
       }),
     );
     const { container } = renderApp(<SellPage />);
-    await userEvent.type(screen.getByPlaceholderText('e.g. Blue Zara Hoodie'), 'Blue jacket');
+    await userEvent.type(
+      screen.getByPlaceholderText('e.g. Blue Zara Hoodie'),
+      'Blue jacket',
+    );
     await userEvent.type(screen.getByPlaceholderText('25.00'), '25');
     await userEvent.upload(container.querySelector('input[type=file]')!, [
       new File(['cover'], 'cover.png', { type: 'image/png' }),
@@ -112,8 +166,12 @@ describe('frontend account and failure flows', () => {
     ]);
     await userEvent.click(screen.getByRole('button', { name: /list item/i }));
     await screen.findByText(/listing saved.*photo/i);
-    await userEvent.click(screen.getByRole('button', { name: /retry.*photo/i }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /list item/i })).toBeEnabled());
+    await userEvent.click(
+      screen.getByRole('button', { name: /retry.*photo/i }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /list item/i })).toBeEnabled(),
+    );
     expect(uploads).toBe(3);
     expect(creations).toBe(1);
   });
@@ -125,22 +183,37 @@ describe('frontend account and failure flows', () => {
     server.use(
       http.get(`${base}/products/product-1`, () => HttpResponse.json(product)),
       http.get(`${base}/categories`, () => HttpResponse.json([])),
-      http.get(`${base}/settings/public`, () => HttpResponse.json({ max_images_per_product: 7 })),
-      http.put(`${base}/products/product-1`, () => { updates += 1; return HttpResponse.json(product); }),
+      http.get(`${base}/settings/public`, () =>
+        HttpResponse.json({ max_images_per_product: 7 }),
+      ),
+      http.put(`${base}/products/product-1`, () => {
+        updates += 1;
+        return HttpResponse.json(product);
+      }),
       http.post(`${base}/products/product-1/images`, () => {
         uploads += 1;
-        return uploads === 1 ? new HttpResponse(null, { status: 500 }) : HttpResponse.json({});
+        return uploads === 1
+          ? new HttpResponse(null, { status: 500 })
+          : HttpResponse.json({});
       }),
     );
-    const { container } = renderApp(<Routes>
-      <Route path="/edit/:id" element={<EditProductPage />} />
-      <Route path="/my-products" element={<p>Listings</p>} />
-    </Routes>, '/edit/product-1');
+    const { container } = renderApp(
+      <Routes>
+        <Route path="/edit/:id" element={<EditProductPage />} />
+        <Route path="/my-products" element={<p>Listings</p>} />
+      </Routes>,
+      '/edit/product-1',
+    );
     await screen.findByDisplayValue('Blue jacket');
-    await userEvent.upload(container.querySelector('input[type=file]')!, new File(['image'], 'photo.png', { type: 'image/png' }));
+    await userEvent.upload(
+      container.querySelector('input[type=file]')!,
+      new File(['image'], 'photo.png', { type: 'image/png' }),
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByText(/changes saved.*photo/i);
-    await userEvent.click(screen.getByRole('button', { name: /retry.*photo/i }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /retry.*photo/i }),
+    );
     await waitFor(() => expect(uploads).toBe(2));
     expect(updates).toBe(1);
   });
