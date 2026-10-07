@@ -1,26 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { orderApi } from '../api/orders';
+import { useOrders } from '../hooks/useOrders';
+import type { OrderStatus } from '../types';
 
-const statusStyles: Record<string, string> = {
+const statusStyles: Record<OrderStatus, string> = {
   paid: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
+  stock_reserved: 'bg-yellow-100 text-yellow-700',
   payment_failed: 'bg-red-100 text-red-700',
   failed: 'bg-red-100 text-red-700',
 };
 
 export default function OrdersPage() {
-  const {
-    data: orders,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ['orders'],
-    queryFn: orderApi.list,
-  });
+  const { data: orders, isLoading, isError, refetch } = useOrders();
 
   if (isLoading) return <p className="text-gray-500">Loading orders…</p>;
-  if (isError) return <p className="text-red-500">Failed to load orders.</p>;
+  if (isError)
+    return (
+      <div role="alert">
+        Failed to load orders.{' '}
+        <button onClick={() => void refetch()}>Retry</button>
+      </div>
+    );
 
   return (
     <div className="max-w-2xl mx-auto">

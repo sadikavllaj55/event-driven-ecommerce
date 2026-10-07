@@ -1,3 +1,4 @@
+import { queryKeys } from '../api/queryKeys';
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +19,7 @@ export default function ProductDetailPage() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['product', id],
+    queryKey: queryKeys.product(id),
     queryFn: () => productApi.getById(id!),
   });
 

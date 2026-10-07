@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
+import { queryKeys } from '../../api/queryKeys';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 
@@ -8,7 +9,7 @@ export default function AdminDashboard() {
   const { user } = useAuth();
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: queryKeys.adminStats(user?.sub),
     queryFn: adminApi.stats,
     enabled: user?.role === 'admin',
   });

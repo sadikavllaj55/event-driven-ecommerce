@@ -1,3 +1,4 @@
+import { queryKeys } from '../api/queryKeys';
 import { useQuery } from '@tanstack/react-query';
 import { categoryApi } from '../api/categories';
 
@@ -8,7 +9,7 @@ interface Props {
 
 export default function CategoryNav({ selected, onSelect }: Props) {
   const { data: categories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: queryKeys.categories,
     queryFn: categoryApi.list,
   });
 

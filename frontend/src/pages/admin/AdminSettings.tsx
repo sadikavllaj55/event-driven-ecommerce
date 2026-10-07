@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { adminApi, type Setting } from '../../api/admin';
+import { queryKeys } from '../../api/queryKeys';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
@@ -25,7 +26,7 @@ export default function AdminSettings() {
   const { user } = useAuth();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['admin-settings'],
+    queryKey: queryKeys.adminSettings(user?.sub),
     queryFn: adminApi.listSettings,
     enabled: user?.role === 'admin',
   });
@@ -64,6 +65,7 @@ export default function AdminSettings() {
 // Each row owns its own edit state, so editing one setting doesn't affect others
 function SettingRow({ setting }: { setting: Setting }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const meta = SETTING_META[setting.key];
   const [value, setValue] = useState(setting.value);
   const isDirty = value !== setting.value;
@@ -71,8 +73,8 @@ function SettingRow({ setting }: { setting: Setting }) {
   const save = useMutation({
     mutationFn: () => adminApi.updateSetting(setting.key, value),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-settings'] });
-      qc.invalidateQueries({ queryKey: ['public-settings'] }); // update the uploader limit too
+      qc.invalidateQueries({ queryKey: queryKeys.adminSettings(user?.sub) });
+      qc.invalidateQueries({ queryKey: queryKeys.publicSettings });
       toast.success('Setting saved');
     },
     onError: (err) =>

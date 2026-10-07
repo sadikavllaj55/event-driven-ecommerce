@@ -1,5 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
 import { productApi } from '../api/products';
+import { queryKeys } from '../api/queryKeys';
 import type { CartItem, Product } from '../types';
 
 // Loads product details (name, images) for each cart item.
@@ -8,7 +9,7 @@ import type { CartItem, Product } from '../types';
 export function useCartProducts(items: CartItem[]) {
   const results = useQueries({
     queries: items.map((item) => ({
-      queryKey: ['product', item.product_id],
+      queryKey: queryKeys.product(item.product_id),
       queryFn: () => productApi.getById(item.product_id),
       staleTime: 60_000,
     })),

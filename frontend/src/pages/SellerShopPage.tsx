@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { profileApi } from '../api/profile';
+import { queryKeys } from '../api/queryKeys';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { PRODUCTS_PER_PAGE } from '../constants/product';
@@ -15,13 +16,13 @@ export default function SellerShopPage() {
   const [page, setPage] = useState(1);
 
   const profileQuery = useQuery({
-    queryKey: ['profile', id],
+    queryKey: queryKeys.profile(id),
     queryFn: () => profileApi.get(id!),
     enabled: !!id,
   });
 
   const productsQuery = useQuery({
-    queryKey: ['seller-products', id, page],
+    queryKey: [...queryKeys.sellerProducts(id), page],
     queryFn: () => profileApi.sellerProducts(id!, page, PRODUCTS_PER_PAGE),
     enabled: !!id,
     placeholderData: keepPreviousData,

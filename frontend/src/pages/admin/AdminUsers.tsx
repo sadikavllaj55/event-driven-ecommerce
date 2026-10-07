@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin';
+import { queryKeys } from '../../api/queryKeys';
+import { roleSchema } from '../../api/schemas';
+import type { Role } from '../../types';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
@@ -17,7 +20,7 @@ export default function AdminUsers() {
   const qc = useQueryClient();
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['admin-users'],
+    queryKey: queryKeys.adminUsers(user?.sub),
     queryFn: adminApi.listUsers,
     enabled: user?.role === 'admin',
   });
@@ -26,8 +29,8 @@ export default function AdminUsers() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       adminApi.setUserStatus(id, status),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+      qc.invalidateQueries({ queryKey: queryKeys.adminUsers(user?.sub) });
+      qc.invalidateQueries({ queryKey: queryKeys.adminStats(user?.sub) });
       toast.success('Status updated');
     },
     onError: (err) =>
@@ -35,11 +38,11 @@ export default function AdminUsers() {
   });
 
   const setRole = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) =>
+    mutationFn: ({ id, role }: { id: string; role: Role }) =>
       adminApi.setUserRole(id, role),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+      qc.invalidateQueries({ queryKey: queryKeys.adminUsers(user?.sub) });
+      qc.invalidateQueries({ queryKey: queryKeys.adminStats(user?.sub) });
       toast.success('Role updated');
     },
     onError: (err) =>
@@ -84,7 +87,10 @@ export default function AdminUsers() {
                     <select
                       value={u.role}
                       onChange={(e) =>
-                        setRole.mutate({ id: u.id, role: e.target.value })
+                        setRole.mutate({
+                          id: u.id,
+                          role: roleSchema.parse(e.target.value),
+                        })
                       }
                       disabled={isSelf}
                       className={`text-xs rounded-full px-2 py-1 ${roleStyles[u.role] ?? ''} disabled:opacity-60`}

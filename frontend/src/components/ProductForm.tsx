@@ -6,6 +6,8 @@ import ImageUploader from './ImageUploader';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { CONDITIONS, GENDERS } from '../constants/product';
 import { getErrorMessage } from '../utils/errors';
+import { conditionSchema } from '../api/schemas';
+import { queryKeys } from '../api/queryKeys';
 import type { CreateProductInput, Product } from '../types';
 
 // Form state uses strings (inputs always give strings); converted on submit
@@ -83,7 +85,7 @@ export default function ProductForm({
   const { maxImages } = usePublicSettings();
 
   const { data: categories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: queryKeys.categories,
     queryFn: categoryApi.list,
   });
 
@@ -110,7 +112,7 @@ export default function ProductForm({
           size: form.size,
           color: form.color,
           material: form.material,
-          condition: form.condition,
+          condition: conditionSchema.parse(form.condition),
           gender: form.gender,
           category_id: form.category_id || null,
         },

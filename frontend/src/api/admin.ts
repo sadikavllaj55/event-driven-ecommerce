@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { Role } from '../types';
 
 export interface AdminStats {
   users: {
@@ -26,7 +27,7 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: Role;
   status: string;
   verified: boolean;
   created_at: string;
@@ -53,7 +54,7 @@ export const adminApi = {
     await api.patch(`/admin/users/${id}/status`, { status });
   },
 
-  setUserRole: async (id: string, role: string): Promise<void> => {
+  setUserRole: async (id: string, role: Role): Promise<void> => {
     await api.patch(`/admin/users/${id}/role`, { role });
   },
 

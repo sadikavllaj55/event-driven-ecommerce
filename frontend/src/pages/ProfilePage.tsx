@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { profileApi } from '../api/profile';
+import { queryKeys } from '../api/queryKeys';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { getErrorMessage } from '../utils/errors';
@@ -16,15 +17,20 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile', user?.sub],
+  const {
+    data: profile,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.profile(user?.sub),
     queryFn: () => profileApi.get(user!.sub),
     enabled: !!user,
   });
 
   // The server returns the updated profile → put it straight into the cache
   function onSaved(updated: Profile) {
-    qc.setQueryData(['profile', updated.id], updated);
+    qc.setQueryData(queryKeys.profile(updated.id), updated);
   }
 
   const uploadAvatar = useMutation({
@@ -37,6 +43,13 @@ export default function ProfilePage() {
   });
 
   if (!user) return <Navigate to={ROUTES.login} replace />;
+  if (isError)
+    return (
+      <div role="alert">
+        Failed to load profile.{' '}
+        <button onClick={() => void refetch()}>Retry</button>
+      </div>
+    );
   if (isLoading || !profile)
     return <p className="text-gray-500">Loading profile…</p>;
 
