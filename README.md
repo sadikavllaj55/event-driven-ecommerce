@@ -184,6 +184,20 @@ Register → verify → login (optional 2FA)
 GET /products/search?q=jumper&brand=Zara&condition=very_good&gender=women&max_price=5000
 ```
 
+The search-bar dropdown also searches members through `GET /users/search?q=sa`.
+The user service uses a separate Elasticsearch `members` index with prefix and
+typo-tolerant name matching, returning at most 50 public profiles. Only ID, name,
+avatar URL, bio, and join date are indexed; emails and authentication data are not.
+
+PostgreSQL remains the source of truth. Existing profiles are indexed at startup;
+registration and bio/avatar edits update the index, while bans remove members and
+reactivation restores them. Reconciliation runs every minute to retry missed
+updates after temporary Elasticsearch failures. Search results are checked against
+current database status so stale banned or deleted accounts are never returned.
+Search does not fall back to PostgreSQL when Elasticsearch is unavailable.
+The user service reads `ELASTIC_URL` (default `http://localhost:9200`); Docker
+Compose configures it as `http://elasticsearch:9200`.
+
 ---
 
 ## Security

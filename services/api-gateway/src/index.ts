@@ -168,6 +168,7 @@ app.get(
 app.get('/products', gateway(PRODUCT_SERVICE_URL));
 app.get('/products/:id', gateway(PRODUCT_SERVICE_URL));
 app.get('/categories', gateway(PRODUCT_SERVICE_URL));
+app.get('/users/search', gateway(USER_SERVICE_URL));
 app.get('/users/:id/profile', gateway(USER_SERVICE_URL));
 app.get('/settings/public', gateway(PRODUCT_SERVICE_URL));
 app.put('/profile', authenticate, injectUserId, gateway(USER_SERVICE_URL));

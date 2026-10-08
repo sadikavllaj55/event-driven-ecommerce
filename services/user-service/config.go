@@ -29,6 +29,7 @@ func LoadConfig() Config {
 		DBURL:           getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/ecommerce"),
 		RabbitURL:       getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		Port:            getEnv("PORT", "8082"),
+		ElasticURL:      getEnv("ELASTIC_URL", "http://localhost:9200"),
 		MinioEndpoint:   getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinioAccessKey:  getEnv("MINIO_ACCESS_KEY", "minioadmin"),
 		MinioSecretKey:  getEnv("MINIO_SECRET_KEY", "minioadmin"),

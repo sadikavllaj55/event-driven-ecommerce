@@ -16,6 +16,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user domain.User, verificationToken string) error
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetByID(ctx context.Context, id string) (*domain.User, error)
+	ListProfileUsers(ctx context.Context) ([]domain.User, error)
 	VerifyByToken(ctx context.Context, token string) error
 	SetTOTPSecret(ctx context.Context, userID, secret string) error
 	EnableTOTP(ctx context.Context, userID string) error
@@ -66,6 +67,25 @@ func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (
 // GetByID looks up a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	return r.getUser(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id)
+}
+
+func (r *PostgresUserRepository) ListProfileUsers(ctx context.Context) ([]domain.User, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, avatar_url, bio, created_at, status FROM users ORDER BY id`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := []domain.User{}
+	for rows.Next() {
+		var user domain.User
+		if err := rows.Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Bio, &user.CreatedAt, &user.Status); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
 }
 
 // getUser is a shared helper for single-user lookups

@@ -224,6 +224,55 @@ describe('frontend account and failure flows', () => {
     expect(privateRequests).toBe(0);
   });
 
+  it('switches between catalogue and public member search', async () => {
+    const memberRequests: string[] = [];
+    server.use(
+      http.get(`${base}/products`, () =>
+        HttpResponse.json({
+          products: [product],
+          total: 1,
+          page: 1,
+          limit: 12,
+        }),
+      ),
+      http.get(`${base}/categories`, () => HttpResponse.json([])),
+      http.get(`${base}/users/search`, ({ request }) => {
+        memberRequests.push(new URL(request.url).searchParams.get('q') ?? '');
+        return HttpResponse.json([
+          {
+            id: 'seller-1',
+            name: 'Alex Rivera',
+            avatar_url: '',
+            bio: 'Vintage clothing seller',
+            created_at: '2026-10-07T12:00:00Z',
+          },
+        ]);
+      }),
+      http.get(`${base}/products/search`, () =>
+        HttpResponse.json([indexedProduct]),
+      ),
+    );
+    renderApp(<ProductsPage />);
+    await screen.findByText('Blue jacket');
+    await userEvent.click(screen.getByRole('button', { name: 'Catalogue' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Members' }));
+    expect(screen.queryByText('Blue jacket')).not.toBeInTheDocument();
+    expect(memberRequests).toHaveLength(0);
+    await userEvent.type(
+      screen.getByPlaceholderText('Search for members'),
+      'Alex',
+    );
+    expect(
+      await screen.findByRole('link', { name: /Alex Rivera/ }),
+    ).toHaveAttribute('href', '/sellers/seller-1');
+    expect(memberRequests.at(-1)).toBe('Alex');
+    await userEvent.click(screen.getByRole('button', { name: 'Members' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Catalogue' }));
+    await screen.findByText('Blue jacket');
+    expect(screen.getByPlaceholderText('Search for items')).toHaveValue('Alex');
+    expect(screen.queryByText('Alex Rivera')).not.toBeInTheDocument();
+  });
+
   it('renders Elasticsearch search hits for department and category filters', async () => {
     const searchRequests: URLSearchParams[] = [];
     server.use(

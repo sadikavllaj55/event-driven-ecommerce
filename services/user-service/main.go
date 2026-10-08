@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -42,8 +43,27 @@ func main() {
 	// --- Wire the layers (dependency injection) ---
 
 	repo := repository.NewPostgresUserRepository(pool)
+	search, err := NewMemberSearch(cfg.ElasticURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize member search: %v", err)
+	}
 	totpManager := NewTOTPManager()
-	userSvc := service.NewUserService(repo, BcryptHasher{}, publisher, totpManager, storage)
+	userSvc := service.NewUserService(repo, BcryptHasher{}, publisher, totpManager, storage, search)
+	reindex := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := userSvc.ReindexProfiles(ctx); err != nil {
+			log.Printf("Member index reconciliation failed; will retry: %v", err)
+		}
+	}
+	reindex()
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			reindex()
+		}
+	}()
 	userHandler := handler.NewUserHandler(userSvc)
 
 	// --- HTTP server ---

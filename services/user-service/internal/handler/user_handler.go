@@ -38,6 +38,7 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("POST /register", h.register)
 	mux.HandleFunc("POST /login", h.login)
+	mux.HandleFunc("GET /users/search", h.searchProfiles)
 	mux.HandleFunc("GET /users/{id}", h.getUser)
 	mux.HandleFunc("GET /verify", h.verify)
 	// 2FA
@@ -86,6 +87,15 @@ func (h *UserHandler) login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("User logged in: %s", user.Email)
 	writeJSON(w, http.StatusOK, user)
+}
+
+func (h *UserHandler) searchProfiles(w http.ResponseWriter, r *http.Request) {
+	profiles, err := h.svc.SearchProfiles(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profiles)
 }
 
 func (h *UserHandler) getUser(w http.ResponseWriter, r *http.Request) {

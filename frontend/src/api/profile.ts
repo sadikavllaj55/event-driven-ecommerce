@@ -3,6 +3,11 @@ import type { PagedProducts, Profile } from '../types';
 import { pagedProductsSchema, profileSchema } from './schemas';
 
 export const profileApi = {
+  search: async (query: string): Promise<Profile[]> => {
+    const res = await api.get('/users/search', { params: { q: query } });
+    return profileSchema.array().parse(res.data);
+  },
+
   // Public profile (no auth needed)
   get: async (userId: string): Promise<Profile> => {
     const res = await api.get<Profile>(`/users/${userId}/profile`);

@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"path"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -40,6 +43,14 @@ type UserService struct {
 	publisher EventPublisher
 	totp      TOTPProvider
 	storage   AvatarStorage
+	search    MemberSearch
+	indexMu   sync.Mutex
+}
+
+type MemberSearch interface {
+	SearchProfiles(ctx context.Context, query string) ([]domain.Profile, error)
+	IndexProfile(ctx context.Context, profile domain.Profile) error
+	DeleteProfile(ctx context.Context, userID string) error
 }
 
 // AvatarStorage uploads profile images and returns their public URL.
@@ -48,8 +59,8 @@ type AvatarStorage interface {
 	UploadAvatar(objectName string, reader io.Reader, size int64, contentType string) (string, error)
 }
 
-func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher, totp TOTPProvider, storage AvatarStorage) *UserService {
-	return &UserService{repo: repo, hasher: hasher, publisher: publisher, totp: totp, storage: storage}
+func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publisher EventPublisher, totp TOTPProvider, storage AvatarStorage, search MemberSearch) *UserService {
+	return &UserService{repo: repo, hasher: hasher, publisher: publisher, totp: totp, storage: storage, search: search}
 }
 
 // Register validates input, creates an unverified user, and publishes a
@@ -94,6 +105,7 @@ func (s *UserService) Register(ctx context.Context, email, password, name, role 
 	if err := s.repo.Create(ctx, user, verificationToken); err != nil {
 		return nil, err // may be ErrEmailExists
 	}
+	s.syncProfile(ctx, user.ID)
 
 	// Publish the event (best-effort — registration still succeeds if this fails)
 	if err := s.publisher.PublishUserRegistered(user.ID, user.Email, user.Name, verificationToken); err != nil {
@@ -134,6 +146,68 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*domai
 	}
 
 	return user, nil
+}
+
+func (s *UserService) SearchProfiles(ctx context.Context, query string) ([]domain.Profile, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return []domain.Profile{}, nil
+	}
+	if utf8.RuneCountInString(query) > 100 {
+		return nil, domain.ErrInvalidInput
+	}
+	profiles, err := s.search.SearchProfiles(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	visible := make([]domain.Profile, 0, len(profiles))
+	for _, profile := range profiles {
+		user, err := s.repo.GetByID(ctx, profile.ID)
+		if err != nil {
+			if errors.Is(err, domain.ErrUserNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		if user.Status == domain.UserStatusActive {
+			visible = append(visible, user.ToProfile())
+		}
+	}
+	return visible, nil
+}
+
+func (s *UserService) ReindexProfiles(ctx context.Context) error {
+	s.indexMu.Lock()
+	defer s.indexMu.Unlock()
+	users, err := s.repo.ListProfileUsers(ctx)
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		if err := s.indexProfile(ctx, user); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *UserService) indexProfile(ctx context.Context, user domain.User) error {
+	if user.Status != domain.UserStatusActive {
+		return s.search.DeleteProfile(ctx, user.ID)
+	}
+	return s.search.IndexProfile(ctx, user.ToProfile())
+}
+
+func (s *UserService) syncProfile(ctx context.Context, userID string) {
+	s.indexMu.Lock()
+	defer s.indexMu.Unlock()
+	user, err := s.repo.GetByID(ctx, userID)
+	if err == nil {
+		err = s.indexProfile(ctx, *user)
+	}
+	if err != nil {
+		log.Printf("Member index update failed for %s; periodic reconciliation will retry: %v", userID, err)
+	}
 }
 
 // GetByID returns a user's profile
@@ -222,7 +296,11 @@ func (s *UserService) SetUserStatus(ctx context.Context, adminID, targetID, stat
 	if adminID == targetID {
 		return domain.ErrCannotSelfModify
 	}
-	return s.repo.UpdateStatus(ctx, targetID, status)
+	if err := s.repo.UpdateStatus(ctx, targetID, status); err != nil {
+		return err
+	}
+	s.syncProfile(ctx, targetID)
+	return nil
 }
 
 // SetUserRole changes a user's role. Admins can't change their own role.
@@ -264,6 +342,7 @@ func (s *UserService) UpdateBio(ctx context.Context, userID, bio string) (*domai
 	if err := s.repo.UpdateBio(ctx, userID, bio); err != nil {
 		return nil, err
 	}
+	s.syncProfile(ctx, userID)
 	return s.GetProfile(ctx, userID)
 }
 
@@ -291,5 +370,6 @@ func (s *UserService) UploadAvatar(
 	if err := s.repo.UpdateAvatarURL(ctx, userID, url); err != nil {
 		return nil, err
 	}
+	s.syncProfile(ctx, userID)
 	return s.GetProfile(ctx, userID)
 }

@@ -61,6 +61,22 @@ async function mockApi(page: Page) {
         json: { products: [product], total: 1, page: 1, limit: 12 },
       });
     if (path === '/products/product-1') return route.fulfill({ json: product });
+    if (path === '/products/search')
+      return route.fulfill({
+        json: [{ ...product, seller_name: 'Alex Rivera' }],
+      });
+    if (path === '/users/search')
+      return route.fulfill({
+        json: [
+          {
+            id: 'seller-1',
+            name: 'Alex Rivera',
+            avatar_url: '',
+            bio: 'Vintage clothing seller',
+            created_at: '2026-10-07T12:00:00Z',
+          },
+        ],
+      });
     if (path === '/categories' || path === '/favorites')
       return route.fulfill({ json: [] });
     if (path === '/cart')
@@ -112,6 +128,53 @@ test('guests browse without redirecting and invalid login stays recoverable', as
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
 });
 
+test('search dropdown switches between catalogue and members', async ({
+  page,
+}, testInfo) => {
+  await mockApi(page);
+  await page.goto('/');
+  await expect(page.getByText('Blue jacket')).toBeVisible();
+  const catalogue = page.getByRole('button', {
+    name: 'Catalogue',
+    exact: true,
+  });
+  await catalogue.click();
+  await expect(
+    page.getByRole('option', { name: 'Members', exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('search-dropdown.png'),
+    fullPage: true,
+  });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('button', { name: 'Members', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Blue jacket')).not.toBeVisible();
+  await page
+    .getByRole('searchbox', { name: 'Search for members' })
+    .fill('Alex');
+  const member = page.getByRole('link', { name: /Alex Rivera/ });
+  await expect(member).toBeVisible();
+  await expect(member).toHaveAttribute('href', '/sellers/seller-1');
+  expect(
+    await page.evaluate(
+      'document.documentElement.scrollWidth <= window.innerWidth',
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('member-results.png'),
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('option', { name: 'Catalogue', exact: true }).click();
+  await expect(page.getByText('Blue jacket')).toBeVisible();
+  await expect(
+    page.getByRole('searchbox', { name: 'Search for items' }),
+  ).toHaveValue('Alex');
+});
+
 test('login returns to cart and checkout progresses to paid', async ({
   page,
 }) => {
@@ -136,7 +199,7 @@ test('login returns to cart and checkout progresses to paid', async ({
   );
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+      'document.documentElement.scrollWidth <= window.innerWidth',
     ),
   ).toBe(true);
   await page.getByRole('button', { name: /checkout/i }).click();
