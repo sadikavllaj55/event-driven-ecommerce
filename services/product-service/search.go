@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 
 	"product-service/internal/domain"
+	"product-service/internal/repository"
 	"product-service/internal/service"
 )
 
@@ -18,11 +20,12 @@ const indexName = "products"
 
 // Search wraps the Elasticsearch client
 type Search struct {
-	client *elasticsearch.Client
+	client     *elasticsearch.Client
+	categories repository.CategoryRepository
 }
 
 // NewSearch connects to Elasticsearch and ensures the index exists
-func NewSearch(addresses []string) (*Search, error) {
+func NewSearch(addresses []string, categories repository.CategoryRepository) (*Search, error) {
 	client, err := elasticsearch.NewClient(elasticsearch.Config{
 		Addresses: addresses,
 	})
@@ -38,14 +41,31 @@ func NewSearch(addresses []string) (*Search, error) {
 	defer res.Body.Close()
 
 	log.Println("Connected to Elasticsearch")
-	return &Search{client: client}, nil
+	return &Search{client: client, categories: categories}, nil
 }
 
 // IndexProduct adds/updates a product in the search index
 func (s *Search) IndexProduct(p domain.Product) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	categoryID := ""
+	categoryNames := []string{}
 	if p.CategoryID != nil {
 		categoryID = *p.CategoryID
+		current := p.CategoryID
+		visited := make(map[string]bool)
+		for current != nil {
+			if visited[*current] {
+				return fmt.Errorf("category cycle while indexing product %s", p.ID)
+			}
+			visited[*current] = true
+			category, err := s.categories.GetCategory(ctx, *current)
+			if err != nil {
+				return fmt.Errorf("load category for product %s: %w", p.ID, err)
+			}
+			categoryNames = append(categoryNames, category.Name)
+			current = category.ParentID
+		}
 	}
 	coverImage := ""
 	if len(p.Images) > 0 {
@@ -66,6 +86,7 @@ func (s *Search) IndexProduct(p domain.Product) error {
 		"color":                p.Color,
 		"material":             p.Material,
 		"category_id":          categoryID,
+		"category_names":       categoryNames,
 		"image_url":            coverImage,
 	}
 
@@ -78,7 +99,7 @@ func (s *Search) IndexProduct(p domain.Product) error {
 		indexName,
 		bytes.NewReader(body),
 		s.client.Index.WithDocumentID(p.ID),
-		s.client.Index.WithContext(context.Background()),
+		s.client.Index.WithContext(ctx),
 	)
 	if err != nil {
 		return err
@@ -104,6 +125,7 @@ func (s *Search) DeleteProduct(productID string) error {
 
 // SearchProducts runs a full-text search with optional filters
 func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, error) {
+	fields := []string{"name^2", "brand^2", "category_names", "description", "seller_name"}
 	// Build the "must" clause (full-text search)
 	must := []map[string]any{}
 	if strings.TrimSpace(f.Query) != "" {
@@ -114,7 +136,7 @@ func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, erro
 					{
 						"multi_match": map[string]any{
 							"query":     f.Query,
-							"fields":    []string{"name^2", "description", "seller_name"},
+							"fields":    fields,
 							"fuzziness": "AUTO",
 						},
 					},
@@ -122,7 +144,7 @@ func (s *Search) SearchProducts(f service.SearchFilters) ([]map[string]any, erro
 					{
 						"multi_match": map[string]any{
 							"query":  f.Query,
-							"fields": []string{"name^2", "description", "seller_name"},
+							"fields": fields,
 							"type":   "phrase_prefix",
 						},
 					},

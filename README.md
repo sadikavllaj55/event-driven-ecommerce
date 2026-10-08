@@ -174,11 +174,12 @@ Register → verify → login (optional 2FA)
 
 ## Search (Elasticsearch)
 
-- **Full-text** across product name, description, and **seller name** (find a seller's shop)
+- **Full-text** across product name, **brand**, **category and subcategory names**, description, and **seller name** (find a seller's shop)
 - **Typo-tolerant** (fuzzy matching — "hodie" finds "hoodie")
-- **Relevance ranking** (name weighted higher than description)
+- **Relevance ranking** (product name and brand weighted higher than description)
 - **Faceted filters**: category, brand, condition, gender, price range
 - Auto-indexed on creation; de-indexed when paused/deleted, re-indexed when reactivated
+- Category search includes the assigned category and every parent category. Active listings are backfilled at product-service startup; category renames, moves, and deletions refresh their indexed names.
 
 ```
 GET /products/search?q=jumper&brand=Zara&condition=very_good&gender=women&max_price=5000

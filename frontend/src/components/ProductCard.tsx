@@ -25,14 +25,10 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
         ) : (
           <span className="text-gray-300 text-5xl">🛍️</span>
         )}
-        {/* Heart overlay */}
-        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center shadow">
-          <FavoriteButton productId={product.id} />
-        </div>
         {/* Condition badge */}
         {product.condition && (
           <span
-            className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+            className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
               CONDITION_COLORS[product.condition] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
@@ -43,13 +39,20 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-sm font-medium text-gray-900 truncate">
-          {product.name}
-        </p>
-        <p className="text-xs text-gray-500 truncate">
-          {product.brand && <span>{product.brand}</span>}
-          {product.size && <span> · {product.size}</span>}
-        </p>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {product.name}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {product.brand && <span>{product.brand}</span>}
+              {product.size && <span> · {product.size}</span>}
+            </p>
+          </div>
+          <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+            <FavoriteButton productId={product.id} />
+          </div>
+        </div>
         <ProductPrice
           price={product.price}
           originalPrice={product.original_price}

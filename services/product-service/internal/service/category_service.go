@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"regexp"
 	"strings"
 
@@ -11,11 +12,12 @@ import (
 
 // CategoryService holds category business logic
 type CategoryService struct {
-	repo repository.CategoryRepository
+	repo    repository.CategoryRepository
+	reindex func(context.Context) (int, error)
 }
 
-func NewCategoryService(repo repository.CategoryRepository) *CategoryService {
-	return &CategoryService{repo: repo}
+func NewCategoryService(repo repository.CategoryRepository, reindex func(context.Context) (int, error)) *CategoryService {
+	return &CategoryService{repo: repo, reindex: reindex}
 }
 
 // Create makes a new category (auto-generates a slug from the name)
@@ -68,7 +70,12 @@ func (s *CategoryService) Update(ctx context.Context, id, name string, parentID 
 	}
 
 	slug := slugify(name)
-	return s.repo.UpdateCategory(ctx, id, name, slug, parentID)
+	category, err := s.repo.UpdateCategory(ctx, id, name, slug, parentID)
+	if err != nil {
+		return nil, err
+	}
+	s.syncSearch(ctx)
+	return category, nil
 }
 
 // Delete removes a category (blocked if it has children)
@@ -80,7 +87,17 @@ func (s *CategoryService) Delete(ctx context.Context, id string) error {
 	if count > 0 {
 		return domain.ErrCategoryHasChildren
 	}
-	return s.repo.DeleteCategory(ctx, id)
+	if err := s.repo.DeleteCategory(ctx, id); err != nil {
+		return err
+	}
+	s.syncSearch(ctx)
+	return nil
+}
+
+func (s *CategoryService) syncSearch(ctx context.Context) {
+	if _, err := s.reindex(ctx); err != nil {
+		log.Printf("Category search refresh failed: %v", err)
+	}
 }
 
 // --- Helpers ---

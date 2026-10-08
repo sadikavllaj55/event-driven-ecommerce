@@ -49,7 +49,7 @@ func main() {
 
 	// --- Wire the layers (dependency injection) ---
 	repo := repository.NewPostgresProductRepository(pool)
-	search, err := NewSearch([]string{cfg.ElasticURL})
+	search, err := NewSearch([]string{cfg.ElasticURL}, repo)
 	if err != nil {
 		log.Fatalf("Failed to connect to Elasticsearch: %v", err)
 	}
@@ -57,10 +57,15 @@ func main() {
 	userClient := NewUserClient(cfg.UserServiceURL)
 
 	productSvc := service.NewProductService(repo, publisher, storage, search, userClient)
+	if count, err := productSvc.Reindex(context.Background()); err != nil {
+		log.Printf("Product search backfill failed: %v", err)
+	} else {
+		log.Printf("Reindexed %d products with brand and category names", count)
+	}
 
 	productHandler := handler.NewProductHandler(productSvc)
 	// Category tree (admin-managed)
-	categorySvc := service.NewCategoryService(repo)
+	categorySvc := service.NewCategoryService(repo, productSvc.Reindex)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	settingsSvc := service.NewSettingsService(repo)
 	settingsHandler := handler.NewSettingsHandler(settingsSvc)

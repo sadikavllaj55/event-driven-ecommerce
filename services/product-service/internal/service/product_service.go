@@ -197,6 +197,7 @@ func (s *ProductService) Reindex(ctx context.Context) (int, error) {
 	const batchSize = 500
 	sellerNames := make(map[string]string)
 	count := 0
+	var indexErr error
 
 	for offset := 0; ; offset += batchSize {
 		products, _, err := s.repo.List(ctx, batchSize, offset)
@@ -214,6 +215,10 @@ func (s *ProductService) Reindex(ctx context.Context) (int, error) {
 			products[i].SellerName = name
 
 			if err := s.search.IndexProduct(products[i]); err != nil {
+				log.Printf("Reindex product %s failed: %v", products[i].ID, err)
+				if indexErr == nil {
+					indexErr = err
+				}
 				continue // best-effort per product
 			}
 			count++
@@ -223,7 +228,7 @@ func (s *ProductService) Reindex(ctx context.Context) (int, error) {
 			break // last page
 		}
 	}
-	return count, nil
+	return count, indexErr
 }
 
 // syncSearch re-indexes a product after a change that affects its search
