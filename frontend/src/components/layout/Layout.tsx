@@ -1,9 +1,23 @@
 import { Suspense } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  type NavLinkRenderProps,
+} from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import Footer from './Footer';
 import RouteErrorBoundary from './RouteErrorBoundary';
+
+const navLinkClass = ({ isActive }: NavLinkRenderProps) =>
+  `inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--market-primary)]/30 ${
+    isActive
+      ? 'bg-[var(--market-primary-soft)] text-[var(--market-ink)]'
+      : 'text-gray-600 hover:bg-[var(--market-page)] hover:text-[var(--market-ink)]'
+  }`;
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -11,74 +25,65 @@ export default function Layout() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl w-full mx-auto px-3 py-3 flex flex-col gap-3 sm:px-4 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex min-h-screen flex-col bg-[var(--market-page)]">
+      <header className="sticky top-0 z-30 border-b border-[var(--market-border)] bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
           <Link
             to={ROUTES.home}
-            className="self-center text-xl font-bold text-teal-600 sm:text-2xl lg:self-auto"
+            className="group flex self-center items-center gap-2.5 rounded-lg text-[var(--market-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--market-primary)]/30 lg:self-auto"
           >
-            Marketplace 🛍️
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--market-primary)] text-sm font-bold text-white shadow-sm transition-transform duration-150 group-hover:-rotate-3 motion-reduce:transition-none">
+              M
+            </span>
+            <span className="text-xl font-bold sm:text-2xl">Marketplace</span>
           </Link>
-          <nav className="marketplace-nav flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm lg:w-auto lg:justify-end">
+          <nav
+            aria-label="Main navigation"
+            className="marketplace-nav flex w-full flex-wrap items-center justify-center gap-1 lg:w-auto lg:justify-end"
+          >
             {user ? (
               <>
                 {user.role === 'admin' && (
-                  <Link
+                  <NavLink
                     to={ROUTES.adminDashboard}
-                    className="text-purple-600 hover:underline font-medium"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-[var(--market-accent)] transition-colors hover:bg-[var(--market-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--market-accent)]/30"
                   >
-                    Admin 📊
-                  </Link>
+                    Admin
+                  </NavLink>
                 )}
-                <Link
-                  to={ROUTES.sell}
-                  className="text-teal-600 hover:underline"
-                >
-                  Sell 🏷️
-                </Link>
-                <Link
-                  to={ROUTES.myProducts}
-                  className="text-teal-600 hover:underline"
-                >
+                <NavLink to={ROUTES.sell} className={navLinkClass}>
+                  Sell an item
+                </NavLink>
+                <NavLink to={ROUTES.myProducts} className={navLinkClass}>
                   My Listings
-                </Link>
-                <Link
-                  to={ROUTES.favorites}
-                  className="text-teal-600 hover:underline"
-                >
-                  Favorites ❤️
-                </Link>
-                <Link
-                  to={ROUTES.cart}
-                  className="text-teal-600 hover:underline"
-                >
-                  Cart 🛒
-                </Link>
-                <Link
-                  to={ROUTES.orders}
-                  className="text-teal-600 hover:underline"
-                >
-                  Orders 📦
-                </Link>
-                <Link
-                  to={ROUTES.myProfile}
-                  className="text-gray-700 hover:text-teal-600 font-medium"
-                >
-                  👤 Profile
-                </Link>
+                </NavLink>
+                <NavLink to={ROUTES.favorites} className={navLinkClass}>
+                  Favorites
+                </NavLink>
+                <NavLink to={ROUTES.cart} className={navLinkClass}>
+                  Cart
+                </NavLink>
+                <NavLink to={ROUTES.orders} className={navLinkClass}>
+                  Orders
+                </NavLink>
+                <NavLink to={ROUTES.myProfile} className={navLinkClass}>
+                  Profile
+                </NavLink>
                 <button
                   onClick={() => {
                     logout();
                     navigate(ROUTES.home);
                   }}
-                  className="text-teal-600 hover:underline"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                 >
                   Log out
                 </button>
               </>
             ) : (
-              <Link to={ROUTES.login} className="text-teal-600 hover:underline">
+              <Link
+                to={ROUTES.login}
+                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--market-primary)] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--market-primary-hover)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/20"
+              >
                 Log in
               </Link>
             )}
@@ -86,7 +91,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-3 py-4 w-full flex-1 sm:px-4 sm:py-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3 py-5 sm:px-5 sm:py-8">
         <RouteErrorBoundary key={location.pathname}>
           <Suspense
             fallback={

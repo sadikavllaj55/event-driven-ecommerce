@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+:root {
+	--market-ink: #193f35;
+	--market-primary: #16765f;
+	--market-primary-hover: #105f4d;
+	--market-primary-soft: #e7f3ee;
+	--market-accent: #98602b;
+	--market-accent-soft: #fff3df;
+	--market-page: #f4f8f6;
+	--market-border: #dfe9e4;
+}
+
 .marketplace-nav > * {
 	white-space: nowrap;
 }
