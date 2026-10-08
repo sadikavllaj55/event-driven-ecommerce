@@ -57,14 +57,14 @@ func NewPostgresProductRepository(pool *pgxpool.Pool) *PostgresProductRepository
 
 // productColumns is the single source of truth for product SELECT column order.
 // It MUST match the scan order in scanProduct.
-const productColumns = `id, seller_id, name, description, price_cents, stock, image_url,
+const productColumns = `id, seller_id, name, description, price_cents, original_price_cents, stock, image_url,
 	gender, brand, model_code, condition, material, color, size, category_id, status, created_at`
 
 // prefixedProductColumns returns the product columns prefixed with a table alias
 // (for JOIN queries where column names could be ambiguous)
 func prefixedProductColumns(alias string) string {
 	cols := []string{
-		"id", "seller_id", "name", "description", "price_cents", "stock", "image_url",
+		"id", "seller_id", "name", "description", "price_cents", "original_price_cents", "stock", "image_url",
 		"gender", "brand", "model_code", "condition", "material", "color", "size",
 		"category_id", "status", "created_at",
 	}
@@ -84,7 +84,7 @@ type rowScanner interface {
 func scanProduct(row rowScanner) (domain.Product, error) {
 	var p domain.Product
 	err := row.Scan(
-		&p.ID, &p.SellerID, &p.Name, &p.Description, &p.PriceCents, &p.Stock, &p.ImageURL,
+		&p.ID, &p.SellerID, &p.Name, &p.Description, &p.PriceCents, &p.OriginalPriceCents, &p.Stock, &p.ImageURL,
 		&p.Gender, &p.Brand, &p.ModelCode, &p.Condition, &p.Material, &p.Color, &p.Size,
 		&p.CategoryID, &p.Status, &p.CreatedAt,
 	)
@@ -121,10 +121,10 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p domain.Product
 
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO products
-		 (id, seller_id, name, description, price_cents, stock, image_url,
+		 (id, seller_id, name, description, price_cents, original_price_cents, stock, image_url,
 		  gender, brand, model_code, condition, material, color, size, category_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-		p.ID, p.SellerID, p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+		p.ID, p.SellerID, p.Name, p.Description, p.PriceCents, p.OriginalPriceCents, p.Stock, p.ImageURL,
 		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size, p.CategoryID,
 	)
 	if err != nil {
@@ -200,11 +200,11 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id string) (*do
 func (r *PostgresProductRepository) Update(ctx context.Context, p domain.Product) (*domain.Product, error) {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE products
-		 SET name = $1, description = $2, price_cents = $3, stock = $4, image_url = $5,
-		     gender = $6, brand = $7, model_code = $8, condition = $9,
-		     material = $10, color = $11, size = $12, category_id = $13
-		 WHERE id = $14 AND seller_id = $15`,
-		p.Name, p.Description, p.PriceCents, p.Stock, p.ImageURL,
+		 SET name = $1, description = $2, price_cents = $3, original_price_cents = $4, stock = $5, image_url = $6,
+		     gender = $7, brand = $8, model_code = $9, condition = $10,
+		     material = $11, color = $12, size = $13, category_id = $14
+		 WHERE id = $15 AND seller_id = $16`,
+		p.Name, p.Description, p.PriceCents, p.OriginalPriceCents, p.Stock, p.ImageURL,
 		p.Gender, p.Brand, p.ModelCode, p.Condition, p.Material, p.Color, p.Size, p.CategoryID,
 		p.ID, p.SellerID,
 	)

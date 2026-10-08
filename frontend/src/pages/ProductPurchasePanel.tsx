@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import FavoriteButton from '../components/FavoriteButton';
+import ProductPrice from '../components/ProductPrice';
 import { ROUTES } from '../constants/routes';
 import type { Product, Profile } from '../types';
 
@@ -45,9 +46,11 @@ export default function ProductPurchasePanel({
       </div>
 
       <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[var(--market-border)] pb-5">
-        <p className="text-3xl font-semibold tabular-nums text-[var(--market-ink)] sm:text-4xl">
-          €{product.price}
-        </p>
+        <ProductPrice
+          price={product.price}
+          originalPrice={product.original_price}
+          size="detail"
+        />
         <span
           className={`text-sm font-medium ${isOutOfStock ? 'text-gray-500' : 'text-[var(--market-primary)]'}`}
         >
@@ -84,7 +87,6 @@ export default function ProductPurchasePanel({
           size="sm"
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs text-gray-500">Sold by</span>
           <span className="block text-sm font-semibold text-[var(--market-ink)]">
             {sellerProfile?.name ?? 'Marketplace seller'}
           </span>

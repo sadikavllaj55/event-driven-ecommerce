@@ -28,7 +28,9 @@ export const productSchema = z.object({
   name: z.string(),
   description: z.string(),
   price_cents: z.number().int().nonnegative(),
+  original_price_cents: z.number().int().positive().nullable().optional(),
   price: z.string(),
+  original_price: z.string().optional(),
   stock: z.number().int().nonnegative(),
   gender: z.string(),
   brand: z.string(),
@@ -58,6 +60,7 @@ export const productSearchResultSchema = z
     seller_id: z.string().min(1),
     name: z.string(),
     price_cents: z.number().int().nonnegative(),
+    original_price_cents: z.number().int().positive().nullable().optional(),
     gender: z.string(),
     brand: z.string().optional(),
     size: z.string().optional(),
@@ -68,6 +71,11 @@ export const productSearchResultSchema = z
     id: hit.id,
     name: hit.name,
     price: (hit.price_cents / 100).toFixed(2),
+    original_price_cents: hit.original_price_cents ?? null,
+    original_price:
+      hit.original_price_cents == null
+        ? undefined
+        : (hit.original_price_cents / 100).toFixed(2),
     brand: hit.brand ?? '',
     size: hit.size ?? '',
     condition: hit.condition,

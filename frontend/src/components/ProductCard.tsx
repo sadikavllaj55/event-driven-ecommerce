@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { ProductCardData } from '../types';
 import { ROUTES } from '../constants/routes';
 import FavoriteButton from './FavoriteButton';
+import ProductPrice from './ProductPrice';
 import { CONDITION_LABELS, CONDITION_COLORS } from '../constants/product';
 
 export default function ProductCard({ product }: { product: ProductCardData }) {
@@ -49,9 +50,11 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
           {product.brand && <span>{product.brand}</span>}
           {product.size && <span> · {product.size}</span>}
         </p>
-        <p className="mt-1.5 text-base font-bold text-gray-900">
-          €{product.price}
-        </p>
+        <ProductPrice
+          price={product.price}
+          originalPrice={product.original_price}
+          size="card"
+        />
       </div>
     </Link>
   );

@@ -23,19 +23,20 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 // --- Request types (HTTP shapes) — price is in DOLLARS ---
 
 type productRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	ImageURL    string  `json:"image_url"`
-	Gender      string  `json:"gender"`
-	Brand       string  `json:"brand"`
-	ModelCode   string  `json:"model_code"`
-	Condition   string  `json:"condition"`
-	Material    string  `json:"material"`
-	Color       string  `json:"color"`
-	Size        string  `json:"size"`
-	CategoryID  *string `json:"category_id"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	Price         float64  `json:"price"`
+	OriginalPrice *float64 `json:"original_price"`
+	Stock         int      `json:"stock"`
+	ImageURL      string   `json:"image_url"`
+	Gender        string   `json:"gender"`
+	Brand         string   `json:"brand"`
+	ModelCode     string   `json:"model_code"`
+	Condition     string   `json:"condition"`
+	Material      string   `json:"material"`
+	Color         string   `json:"color"`
+	Size          string   `json:"size"`
+	CategoryID    *string  `json:"category_id"`
 }
 type statusRequest struct {
 	Status string `json:"status"`
@@ -44,21 +45,22 @@ type statusRequest struct {
 // toProductInput maps an HTTP request to the service input (shared by create/update)
 func (req productRequest) toProductInput(id, sellerID string) service.ProductInput {
 	return service.ProductInput{
-		ID:           id,
-		SellerID:     sellerID,
-		Name:         req.Name,
-		Description:  req.Description,
-		PriceDollars: req.Price,
-		Stock:        req.Stock,
-		ImageURL:     req.ImageURL,
-		Gender:       req.Gender,
-		Brand:        req.Brand,
-		ModelCode:    req.ModelCode,
-		Condition:    req.Condition,
-		Material:     req.Material,
-		Color:        req.Color,
-		Size:         req.Size,
-		CategoryID:   req.CategoryID,
+		ID:                   id,
+		SellerID:             sellerID,
+		Name:                 req.Name,
+		Description:          req.Description,
+		PriceDollars:         req.Price,
+		OriginalPriceDollars: req.OriginalPrice,
+		Stock:                req.Stock,
+		ImageURL:             req.ImageURL,
+		Gender:               req.Gender,
+		Brand:                req.Brand,
+		ModelCode:            req.ModelCode,
+		Condition:            req.Condition,
+		Material:             req.Material,
+		Color:                req.Color,
+		Size:                 req.Size,
+		CategoryID:           req.CategoryID,
 	}
 }
 

@@ -17,31 +17,37 @@ type ProductImage struct {
 }
 
 type Product struct {
-	ID          string         `json:"id"`
-	SellerID    string         `json:"seller_id"`
-	SellerName  string         `json:"seller_name,omitempty"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	PriceCents  int            `json:"price_cents"`
-	Price       string         `json:"price"`
-	Stock       int            `json:"stock"`
-	Gender      string         `json:"gender"`
-	Brand       string         `json:"brand"`
-	ModelCode   string         `json:"model_code"`
-	Condition   string         `json:"condition"`
-	Material    string         `json:"material"`
-	Color       string         `json:"color"`
-	Size        string         `json:"size"`
-	CategoryID  *string        `json:"category_id"`
-	Status      string         `json:"status"`
-	ImageURL    string         `json:"image_url"`
-	Images      []ProductImage `json:"images"`
-	CreatedAt   time.Time      `json:"created_at"`
+	ID                 string         `json:"id"`
+	SellerID           string         `json:"seller_id"`
+	SellerName         string         `json:"seller_name,omitempty"`
+	Name               string         `json:"name"`
+	Description        string         `json:"description"`
+	PriceCents         int            `json:"price_cents"`
+	OriginalPriceCents *int           `json:"original_price_cents,omitempty"`
+	Price              string         `json:"price"`
+	OriginalPrice      string         `json:"original_price,omitempty"`
+	Stock              int            `json:"stock"`
+	Gender             string         `json:"gender"`
+	Brand              string         `json:"brand"`
+	ModelCode          string         `json:"model_code"`
+	Condition          string         `json:"condition"`
+	Material           string         `json:"material"`
+	Color              string         `json:"color"`
+	Size               string         `json:"size"`
+	CategoryID         *string        `json:"category_id"`
+	Status             string         `json:"status"`
+	ImageURL           string         `json:"image_url"`
+	Images             []ProductImage `json:"images"`
+	CreatedAt          time.Time      `json:"created_at"`
 }
 
 // SetDisplayPrice populates the human-friendly Price field from PriceCents
 func (p *Product) SetDisplayPrice() {
 	p.Price = CentsToDisplay(p.PriceCents)
+	p.OriginalPrice = ""
+	if p.OriginalPriceCents != nil {
+		p.OriginalPrice = CentsToDisplay(*p.OriginalPriceCents)
+	}
 }
 
 // Domain errors

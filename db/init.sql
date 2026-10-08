@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     price_cents INT NOT NULL CHECK (price_cents >= 0),
+    original_price_cents INT,
     stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
     image_url TEXT NOT NULL DEFAULT '',
     gender item_gender NOT NULL DEFAULT 'unisex',
@@ -116,7 +117,9 @@ CREATE TABLE IF NOT EXISTS products (
     size TEXT NOT NULL DEFAULT '',
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     status product_status NOT NULL DEFAULT 'active',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT products_original_price_gt_price_check
+        CHECK (original_price_cents IS NULL OR original_price_cents > price_cents)
 );
 
 -- Favorites / wishlist (composite PK prevents duplicates)

@@ -6,6 +6,7 @@ import { useCartProducts } from '../hooks/useCartProducts';
 import { ROUTES } from '../constants/routes';
 import { getErrorMessage } from '../utils/errors';
 import type { Order } from '../types';
+import ProductPrice from '../components/ProductPrice';
 
 export default function CartPage() {
   const { cartQuery, removeItem, checkout } = useCart();
@@ -80,6 +81,14 @@ export default function CartPage() {
           {items.map((it) => {
             const product = products[it.product_id];
             const image = product?.images?.[0]?.image_url;
+            const originalPrice =
+              product?.original_price_cents != null &&
+              product.price_cents === it.price_cents
+                ? ((product.original_price_cents * it.quantity) / 100).toFixed(
+                    2,
+                  )
+                : undefined;
+            const linePrice = ((it.price_cents * it.quantity) / 100).toFixed(2);
 
             return (
               <div
@@ -125,9 +134,11 @@ export default function CartPage() {
 
                 {/* Price + remove */}
                 <div className="shrink-0 text-right">
-                  <p className="whitespace-nowrap font-semibold text-gray-900">
-                    €{((it.price_cents * it.quantity) / 100).toFixed(2)}
-                  </p>
+                  <ProductPrice
+                    price={linePrice}
+                    originalPrice={originalPrice}
+                    size="cart"
+                  />
                   <button
                     onClick={() => removeItem.mutate(it.product_id)}
                     className="text-red-500 text-xs hover:underline mt-1"

@@ -52,20 +52,21 @@ func (s *Search) IndexProduct(p domain.Product) error {
 		coverImage = p.Images[0].ImageURL
 	}
 	doc := map[string]any{
-		"id":          p.ID,
-		"seller_id":   p.SellerID,
-		"seller_name": p.SellerName,
-		"name":        p.Name,
-		"description": p.Description,
-		"price_cents": p.PriceCents,
-		"stock":       p.Stock,
-		"gender":      p.Gender,
-		"brand":       p.Brand,
-		"condition":   p.Condition,
-		"color":       p.Color,
-		"material":    p.Material,
-		"category_id": categoryID,
-		"image_url":   coverImage,
+		"id":                   p.ID,
+		"seller_id":            p.SellerID,
+		"seller_name":          p.SellerName,
+		"name":                 p.Name,
+		"description":          p.Description,
+		"price_cents":          p.PriceCents,
+		"original_price_cents": p.OriginalPriceCents,
+		"stock":                p.Stock,
+		"gender":               p.Gender,
+		"brand":                p.Brand,
+		"condition":            p.Condition,
+		"color":                p.Color,
+		"material":             p.Material,
+		"category_id":          categoryID,
+		"image_url":            coverImage,
 	}
 
 	body, err := json.Marshal(doc)

@@ -40,15 +40,29 @@ export default function ProductBasicsFields({ form, onChange }: Props) {
         <legend className="mb-1 w-full border-b border-gray-100 pb-2 text-sm font-semibold text-gray-900">
           Price and attributes
         </legend>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Price (€) *">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Sale price (€) *">
             <input
               type="number"
+              min="0"
               step="0.01"
               value={form.price}
               onChange={(event) => onChange('price', event.target.value)}
               className={inputClass}
               placeholder="25.00"
+            />
+          </Field>
+          <Field label="Original price (€) (optional)">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.original_price}
+              onChange={(event) =>
+                onChange('original_price', event.target.value)
+              }
+              className={inputClass}
+              placeholder="e.g. 49.00"
             />
           </Field>
           <div className="min-w-0">

@@ -24,6 +24,9 @@ func main() {
 	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatalf("Database ping failed: %v", err)
 	}
+	if err := repository.EnsureOriginalPriceSchema(context.Background(), pool); err != nil {
+		log.Fatalf("Failed to migrate product discount pricing: %v", err)
+	}
 	log.Println("Connected to PostgreSQL")
 
 	// --- Infrastructure: RabbitMQ ---

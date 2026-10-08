@@ -23,7 +23,9 @@ export interface Product {
   name: string;
   description: string;
   price_cents: number;
+  original_price_cents?: number | null;
   price: string;
+  original_price?: string;
   stock: number;
   gender: string;
   brand: string;
@@ -43,6 +45,7 @@ export type ProductCardData = Pick<
   Product,
   'id' | 'name' | 'price' | 'brand' | 'size' | 'image_url'
 > & {
+  original_price?: string;
   condition?: ProductCondition;
   images?: ProductImage[] | null;
 };
@@ -58,6 +61,7 @@ export interface CreateProductInput {
   name: string;
   description: string;
   price: number;
+  original_price?: number | null;
   stock: number;
   brand: string;
   size: string;

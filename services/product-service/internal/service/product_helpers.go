@@ -10,21 +10,22 @@ import (
 // ProductInput is the shared input for creating/updating a product.
 // Price is in DOLLARS (e.g. 49.99) — converted to cents internally.
 type ProductInput struct {
-	ID           string // set only for updates
-	SellerID     string
-	Name         string
-	Description  string
-	PriceDollars float64
-	Stock        int
-	ImageURL     string
-	Gender       string
-	Brand        string
-	ModelCode    string
-	Condition    string
-	Material     string
-	Color        string
-	Size         string
-	CategoryID   *string
+	ID                   string // set only for updates
+	SellerID             string
+	Name                 string
+	Description          string
+	PriceDollars         float64
+	OriginalPriceDollars *float64
+	Stock                int
+	ImageURL             string
+	Gender               string
+	Brand                string
+	ModelCode            string
+	Condition            string
+	Material             string
+	Color                string
+	Size                 string
+	CategoryID           *string
 }
 
 // normalizeAndValidate applies defaults, validates enums, and checks the category.
@@ -35,6 +36,9 @@ func (s *ProductService) normalizeAndValidate(ctx context.Context, in *ProductIn
 		return domain.ErrInvalidInput
 	}
 	if in.PriceDollars < 0 || in.Stock < 0 {
+		return domain.ErrInvalidInput
+	}
+	if in.OriginalPriceDollars != nil && domain.DollarsToCents(*in.OriginalPriceDollars) <= domain.DollarsToCents(in.PriceDollars) {
 		return domain.ErrInvalidInput
 	}
 
@@ -63,7 +67,7 @@ func (s *ProductService) normalizeAndValidate(ctx context.Context, in *ProductIn
 
 // toDomain maps a validated input to a domain.Product
 func (in ProductInput) toDomain() domain.Product {
-	return domain.Product{
+	product := domain.Product{
 		ID:          in.ID,
 		SellerID:    in.SellerID,
 		Name:        in.Name,
@@ -80,4 +84,9 @@ func (in ProductInput) toDomain() domain.Product {
 		Size:        in.Size,
 		CategoryID:  in.CategoryID,
 	}
+	if in.OriginalPriceDollars != nil {
+		originalPriceCents := domain.DollarsToCents(*in.OriginalPriceDollars)
+		product.OriginalPriceCents = &originalPriceCents
+	}
+	return product
 }

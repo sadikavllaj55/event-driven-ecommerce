@@ -41,8 +41,26 @@ export default function ProductForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.price) {
-      toast.error('Name and price are required');
+    const salePrice = Number(form.price);
+    if (
+      !form.name.trim() ||
+      !form.price.trim() ||
+      !Number.isFinite(salePrice) ||
+      salePrice < 0
+    ) {
+      toast.error('Name and a valid sale price are required');
+      return;
+    }
+
+    const originalPrice = form.original_price.trim()
+      ? Number(form.original_price)
+      : null;
+    if (
+      originalPrice !== null &&
+      (!Number.isFinite(originalPrice) ||
+        Math.round(originalPrice * 100) <= Math.round(salePrice * 100))
+    ) {
+      toast.error('Original price must be higher than the sale price');
       return;
     }
 
@@ -52,7 +70,8 @@ export default function ProductForm({
         {
           name: form.name.trim(),
           description: form.description,
-          price: parseFloat(form.price),
+          price: salePrice,
+          original_price: originalPrice,
           stock: Math.max(
             1,
             form.stock.trim() ? Number.parseInt(form.stock, 10) : 1,

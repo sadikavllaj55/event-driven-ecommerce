@@ -1,7 +1,9 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import ProductForm from '../components/ProductForm';
+import { EMPTY_PRODUCT_FORM } from '../components/productFormModel';
 import { useAuth } from '../auth/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { useFavorites } from '../hooks/useFavorites';
@@ -23,6 +25,7 @@ const indexedProduct = {
   name: 'Blue jacket',
   description: 'A warm jacket',
   price_cents: 2500,
+  original_price_cents: 3500,
   stock: 1,
   gender: 'women',
   brand: 'Example',
@@ -57,6 +60,105 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
+  it('rejects an invalid discount and submits a valid seller price reduction', async () => {
+    server.use(
+      http.get(`${base}/categories`, () => HttpResponse.json([])),
+      http.get(`${base}/settings/public`, () =>
+        HttpResponse.json({ max_images_per_product: 7 }),
+      ),
+    );
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderApp(
+      <ProductForm
+        initialValues={{ ...EMPTY_PRODUCT_FORM, name: 'Jacket', price: '25' }}
+        submitLabel="Save"
+        submittingLabel="Saving"
+        onSubmit={onSubmit}
+      />,
+    );
+    const originalInput = screen.getByPlaceholderText('e.g. 49.00');
+    await userEvent.type(originalInput, '25');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await userEvent.clear(originalInput);
+    await userEvent.type(originalInput, '35');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ price: 25, original_price: 35 }),
+      [],
+    );
+  });
+
+  it('clears the discount when the seller removes the original price', async () => {
+    server.use(
+      http.get(`${base}/categories`, () => HttpResponse.json([])),
+      http.get(`${base}/settings/public`, () =>
+        HttpResponse.json({ max_images_per_product: 7 }),
+      ),
+    );
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderApp(
+      <ProductForm
+        initialValues={{
+          ...EMPTY_PRODUCT_FORM,
+          name: 'Jacket',
+          price: '25',
+          original_price: '35',
+        }}
+        submitLabel="Save"
+        submittingLabel="Saving"
+        onSubmit={onSubmit}
+      />,
+    );
+    await userEvent.clear(screen.getByPlaceholderText('e.g. 49.00'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ price: 25, original_price: null }),
+      [],
+    );
+  });
+
+  it.each([2500, 2400])(
+    'uses the cart snapshot price %i when displaying reductions',
+    async (snapshotCents) => {
+      localStorage.setItem('token', tokenFor('buyer-1'));
+      server.use(
+        http.get(`${base}/cart`, () =>
+          HttpResponse.json({
+            buyer_id: 'buyer-1',
+            items: [
+              {
+                product_id: product.id,
+                quantity: 2,
+                price_cents: snapshotCents,
+              },
+            ],
+          }),
+        ),
+        http.get(`${base}/products/product-1`, () =>
+          HttpResponse.json({
+            ...product,
+            original_price_cents: 3500,
+            original_price: '35.00',
+          }),
+        ),
+      );
+      renderApp(<CartPage />);
+      await screen.findByText('Blue jacket');
+      expect(
+        screen.getAllByText(`€${((snapshotCents * 2) / 100).toFixed(2)}`),
+      ).toHaveLength(2);
+      if (snapshotCents === product.price_cents) {
+        expect(screen.getByText('€70.00')).toHaveClass(
+          'line-through',
+          'text-red-600',
+        );
+      } else {
+        expect(screen.queryByText('€70.00')).not.toBeInTheDocument();
+      }
+    },
+  );
+
   it('shows the seller profile photo and name on the product page', async () => {
     server.use(
       http.get(`${base}/products/product-1`, () => HttpResponse.json(product)),
@@ -148,6 +250,10 @@ describe('frontend account and failure flows', () => {
     await userEvent.click(screen.getByRole('button', { name: /women/i }));
     await screen.findByText('Blue jacket');
     expect(searchRequests.at(-1)?.get('gender')).toBe('women');
+    expect(screen.getByText('€35.00')).toHaveClass(
+      'line-through',
+      'text-red-600',
+    );
 
     await userEvent.click(screen.getByRole('button', { name: 'Shoes' }));
     await waitFor(() =>

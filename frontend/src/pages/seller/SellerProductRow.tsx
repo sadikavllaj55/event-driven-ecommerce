@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import type { Product } from '../../types';
+import ProductPrice from '../../components/ProductPrice';
 
 const statusStyles: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -45,7 +46,11 @@ export default function SellerProductRow({
         >
           {product.name}
         </Link>
-        <p className="text-sm text-gray-500">€{product.price}</p>
+        <ProductPrice
+          price={product.price}
+          originalPrice={product.original_price}
+          size="seller"
+        />
         <span
           className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${statusStyles[product.status] ?? ''}`}
         >

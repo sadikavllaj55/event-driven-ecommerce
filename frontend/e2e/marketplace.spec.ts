@@ -7,6 +7,8 @@ const product = {
   description: '',
   price_cents: 2500,
   price: '25.00',
+  original_price_cents: 3500,
+  original_price: '35.00',
   stock: 1,
   gender: 'unisex',
   brand: '',
@@ -86,6 +88,11 @@ test('guests browse without redirecting and invalid login stays recoverable', as
   await mockApi(page);
   await page.goto('/');
   await expect(page.getByText('Blue jacket')).toBeVisible();
+  await expect(page.getByText('€35.00')).toBeVisible();
+  await expect(page.getByText('€35.00')).toHaveCSS(
+    'text-decoration-line',
+    'line-through',
+  );
   await expect(page).toHaveURL('/');
   await page.getByRole('link', { name: 'Log in', exact: true }).click();
   await page
@@ -122,6 +129,16 @@ test('login returns to cart and checkout progresses to paid', async ({
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page).toHaveURL('/cart');
   await expect(page.getByText('Blue jacket')).toBeVisible();
+  await expect(page.getByText('€35.00')).toBeVisible();
+  await expect(page.getByText('€35.00')).toHaveCSS(
+    'text-decoration-line',
+    'line-through',
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.getByRole('button', { name: /checkout/i }).click();
   await expect(
     page.getByRole('heading', { name: /order placed/i }),
