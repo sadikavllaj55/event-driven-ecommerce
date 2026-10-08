@@ -86,7 +86,7 @@ export default function Layout() {
         </div>
       </header>
 
-  <main className="max-w-6xl mx-auto px-3 py-4 w-full flex-1 sm:px-4 sm:py-6">
+      <main className="max-w-6xl mx-auto px-3 py-4 w-full flex-1 sm:px-4 sm:py-6">
         <RouteErrorBoundary key={location.pathname}>
           <Suspense
             fallback={

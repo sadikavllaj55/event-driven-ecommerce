@@ -53,7 +53,10 @@ export default function ProductForm({
           name: form.name.trim(),
           description: form.description,
           price: parseFloat(form.price),
-          stock: parseInt(form.stock) || 1,
+          stock: Math.max(
+            1,
+            form.stock.trim() ? Number.parseInt(form.stock, 10) : 1,
+          ),
           brand: form.brand,
           size: form.size,
           color: form.color,
@@ -72,10 +75,10 @@ export default function ProductForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <ProductFormFields form={form} onChange={update} />
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="mb-1.5 block text-xs font-semibold text-gray-600">
           Photos
         </label>
         <ImageUploader
@@ -97,7 +100,8 @@ export default function ProductForm({
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-teal-600 text-white py-3 rounded-full font-medium hover:bg-teal-700 disabled:opacity-50"
+        aria-busy={submitting}
+        className="h-12 w-full rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-teal-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/20 active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none motion-reduce:transition-none"
       >
         {submitting ? submittingLabel : submitLabel}
       </button>

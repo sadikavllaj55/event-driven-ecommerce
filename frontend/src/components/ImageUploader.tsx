@@ -46,7 +46,8 @@ export default function ImageUploader({
     <div>
       {/* Drop zone */}
       {canAddMore && (
-        <div
+        <button
+          type="button"
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
@@ -54,7 +55,7 @@ export default function ImageUploader({
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+          className={`w-full cursor-pointer rounded-xl border-2 border-dashed bg-white p-6 text-center transition duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/15 motion-reduce:transition-none ${
             dragging
               ? 'border-teal-500 bg-teal-50'
               : 'border-gray-300 hover:border-teal-400 hover:bg-gray-50'
@@ -68,7 +69,7 @@ export default function ImageUploader({
             {max > 1 ? `Up to ${max} images` : 'Single image'} · {totalCount}/
             {max} added
           </p>
-        </div>
+        </button>
       )}
 
       {/* Previews */}
@@ -84,7 +85,8 @@ export default function ImageUploader({
                 <button
                   type="button"
                   onClick={() => onRemoveExisting(url)}
-                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+                  aria-label="Remove existing photo"
+                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-xs text-white opacity-100 transition-opacity hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:opacity-0 sm:group-hover:opacity-100 motion-reduce:transition-none"
                 >
                   ✕
                 </button>
@@ -101,7 +103,8 @@ export default function ImageUploader({
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+                aria-label={`Remove photo ${i + 1}`}
+                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-xs text-white opacity-100 transition-opacity hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:opacity-0 sm:group-hover:opacity-100 motion-reduce:transition-none"
               >
                 ✕
               </button>
