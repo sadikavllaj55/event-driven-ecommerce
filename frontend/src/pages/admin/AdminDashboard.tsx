@@ -21,7 +21,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+      <h1 className="text-xl font-bold text-gray-900 mb-6 sm:text-2xl">
         Admin Dashboard 📊
       </h1>
 
@@ -68,22 +68,22 @@ export default function AdminDashboard() {
       )}
 
       {/* Quick links */}
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <Link
           to={ROUTES.adminUsers}
-          className="bg-teal-600 text-white px-5 py-3 rounded-lg font-medium hover:bg-teal-700"
+          className="inline-flex max-w-full flex-1 basis-full justify-center bg-teal-600 text-white px-5 py-3 rounded-lg font-medium hover:bg-teal-700 sm:basis-auto"
         >
           Manage Users →
         </Link>
         <Link
           to={ROUTES.adminCategories}
-          className="bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50"
+          className="inline-flex max-w-full flex-1 basis-full justify-center bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50 sm:basis-auto"
         >
           Manage Categories →
         </Link>
         <Link
           to={ROUTES.adminSettings}
-          className="bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50"
+          className="inline-flex max-w-full flex-1 basis-full justify-center bg-white text-teal-700 border border-teal-600 px-5 py-3 rounded-lg font-medium hover:bg-teal-50 sm:basis-auto"
         >
           Settings →
         </Link>

@@ -46,7 +46,7 @@ export default function SellPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-lg shadow-sm p-6">
+    <div className="mx-auto w-full max-w-xl rounded-lg bg-white p-4 shadow-sm sm:p-6">
       <h1 className="text-xl font-bold text-gray-900 mb-6">Sell an item 🏷️</h1>
       {pendingPhotos ? (
         <div role="alert">

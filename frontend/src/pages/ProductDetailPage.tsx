@@ -40,9 +40,9 @@ export default function ProductDetailPage() {
         ← Back to browse
       </Link>
 
-      <div className="grid md:grid-cols-2 gap-8 mt-4">
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
         {/* Images */}
-        <div>
+        <div className="min-w-0">
           <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
             {mainImage ? (
               <img
@@ -56,12 +56,12 @@ export default function ProductDetailPage() {
           </div>
           {/* Thumbnails */}
           {images.length > 1 && (
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-2">
               {images.map((img, i) => (
                 <button
                   key={img.id}
                   onClick={() => setActiveImage(i)}
-                  className={`w-16 h-16 rounded overflow-hidden border-2 ${
+                  className={`h-16 w-16 shrink-0 rounded overflow-hidden border-2 ${
                     i === activeImage ? 'border-teal-500' : 'border-transparent'
                   }`}
                 >
@@ -77,7 +77,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Details */}
-        <div>
+        <div className="min-w-0">
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
             <FavoriteButton productId={product.id} />

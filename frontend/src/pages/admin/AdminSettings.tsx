@@ -35,15 +35,17 @@ export default function AdminSettings() {
   if (isLoading) return <p className="text-gray-500">Loading settings…</p>;
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="w-full max-w-2xl min-w-0">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
           to={ROUTES.adminDashboard}
           className="text-teal-600 hover:underline text-sm"
         >
           ← Dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Settings ⚙️</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+          Settings ⚙️
+        </h1>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm divide-y">
@@ -93,7 +95,7 @@ function SettingRow({ setting }: { setting: Setting }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 flex items-center justify-between gap-4"
+      className="flex flex-col items-stretch gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
     >
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900">
@@ -107,7 +109,7 @@ function SettingRow({ setting }: { setting: Setting }) {
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
         <input
           type={meta?.type ?? 'text'}
           min={meta?.min}

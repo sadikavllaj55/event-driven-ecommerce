@@ -54,18 +54,87 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
           to={ROUTES.adminDashboard}
           className="text-teal-600 hover:underline text-sm"
         >
           ← Dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">User Management 👥</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+          User Management 👥
+        </h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="space-y-3 sm:hidden">
+        {users?.map((account) => {
+          const isSelf = account.id === user.sub;
+          return (
+            <article
+              key={account.id}
+              className="rounded-lg bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-gray-900">
+                    {account.name}
+                  </div>
+                  <div className="break-all text-xs text-gray-500">
+                    {account.email}
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-1 text-xs ${account.status === 'banned' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                >
+                  {account.status}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+                <select
+                  aria-label={`Role for ${account.name}`}
+                  value={account.role}
+                  onChange={(event) =>
+                    setRole.mutate({
+                      id: account.id,
+                      role: roleSchema.parse(event.target.value),
+                    })
+                  }
+                  disabled={isSelf}
+                  className={`max-w-full rounded-full px-2 py-1 text-xs ${roleStyles[account.role] ?? ''} disabled:opacity-60`}
+                >
+                  <option value="buyer">buyer</option>
+                  <option value="seller">seller</option>
+                  <option value="admin">admin</option>
+                </select>
+                {isSelf ? (
+                  <span className="text-xs text-gray-400">You</span>
+                ) : account.status === 'banned' ? (
+                  <button
+                    onClick={() =>
+                      setStatus.mutate({ id: account.id, status: 'active' })
+                    }
+                    className="whitespace-nowrap text-teal-600 hover:underline"
+                  >
+                    Reactivate
+                  </button>
+                ) : (
+                  <button
+                    onClick={() =>
+                      setStatus.mutate({ id: account.id, status: 'banned' })
+                    }
+                    className="whitespace-nowrap text-red-500 hover:underline"
+                  >
+                    Ban
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg bg-white shadow-sm sm:block">
+        <table className="w-full min-w-[36rem] text-sm">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
               <th className="px-4 py-3">User</th>

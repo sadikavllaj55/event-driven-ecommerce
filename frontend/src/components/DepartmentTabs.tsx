@@ -13,14 +13,14 @@ const DEPARTMENTS = [
 
 export default function DepartmentTabs({ selected, onSelect }: Props) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-6">
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 mb-6">
       {DEPARTMENTS.map((dept) => {
         const isActive = selected === dept.value;
         return (
           <button
             key={dept.label}
             onClick={() => onSelect(dept.value)}
-            className={`px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-200 ${
+            className={`px-3 py-2 rounded-full font-medium text-sm transition-all duration-200 sm:px-5 sm:py-2.5 ${
               isActive
                 ? 'bg-teal-600 text-white shadow-md scale-105'
                 : 'bg-white text-gray-700 hover:bg-gray-100'

@@ -61,14 +61,14 @@ export default function MyProductsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-gray-900">
           My listings 🏷️{' '}
           <span className="text-sm font-normal text-gray-500">({total})</span>
         </h1>
         <Link
           to={ROUTES.sell}
-          className="bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-700"
+          className="w-fit max-w-full whitespace-nowrap bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-700"
         >
           + Sell an item
         </Link>

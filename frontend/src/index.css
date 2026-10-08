@@ -1,1 +1,5 @@
 @import "tailwindcss";
+
+.marketplace-nav > * {
+	white-space: nowrap;
+}

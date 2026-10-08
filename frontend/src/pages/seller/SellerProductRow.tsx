@@ -21,10 +21,10 @@ export default function SellerProductRow({
   const image = product.images?.[0]?.image_url;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-4">
+    <div className="bg-white rounded-lg shadow-sm p-3 flex items-center gap-3 sm:gap-4 sm:p-4">
       <Link
         to={ROUTES.product(product.id)}
-        className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
+        className="w-14 h-14 shrink-0 bg-gray-100 rounded overflow-hidden flex items-center justify-center sm:w-16 sm:h-16"
       >
         {image ? (
           <img
@@ -53,7 +53,7 @@ export default function SellerProductRow({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 text-sm">
+      <div className="flex shrink-0 flex-col gap-2 text-sm">
         <Link
           to={ROUTES.editProduct(product.id)}
           className="text-teal-600 hover:underline"

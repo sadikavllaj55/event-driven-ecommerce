@@ -35,7 +35,7 @@ export default function ProductFormFields({ form, onChange }: Props) {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Price (€) *">
           <input
             type="number"
@@ -56,7 +56,7 @@ export default function ProductFormFields({ form, onChange }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Brand">
           <input
             value={form.brand}
@@ -75,7 +75,7 @@ export default function ProductFormFields({ form, onChange }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Color">
           <input
             value={form.color}
@@ -94,7 +94,7 @@ export default function ProductFormFields({ form, onChange }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Condition">
           <select
             value={form.condition}

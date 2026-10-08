@@ -82,11 +82,14 @@ export default function CartPage() {
             const image = product?.images?.[0]?.image_url;
 
             return (
-              <div key={it.product_id} className="flex items-center gap-4 p-4">
+              <div
+                key={it.product_id}
+                className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4"
+              >
                 {/* Thumbnail */}
                 <Link
                   to={ROUTES.product(it.product_id)}
-                  className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  className="w-14 h-14 shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center sm:w-16 sm:h-16"
                 >
                   {image ? (
                     <img
@@ -121,8 +124,8 @@ export default function CartPage() {
                 </div>
 
                 {/* Price + remove */}
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">
+                <div className="shrink-0 text-right">
+                  <p className="whitespace-nowrap font-semibold text-gray-900">
                     €{((it.price_cents * it.quantity) / 100).toFixed(2)}
                   </p>
                   <button

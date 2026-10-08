@@ -82,25 +82,30 @@ export default function AdminCategories() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
           to={ROUTES.adminDashboard}
           className="text-teal-600 hover:underline text-sm"
         >
           ← Dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Categories 🏷️</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+          Categories 🏷️
+        </h1>
       </div>
 
       {/* Add top-level category */}
-      <form onSubmit={handleAddRoot} className="flex gap-2 mb-6">
+      <form
+        onSubmit={handleAddRoot}
+        className="mb-6 flex flex-col gap-2 sm:flex-row"
+      >
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New top-level category (e.g. Shoes)"
-          className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="min-w-0 flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
         />
-        <button className="bg-teal-600 text-white px-4 py-2 rounded font-medium hover:bg-teal-700">
+        <button className="whitespace-nowrap bg-teal-600 text-white px-4 py-2 rounded font-medium hover:bg-teal-700">
           + Add
         </button>
       </form>

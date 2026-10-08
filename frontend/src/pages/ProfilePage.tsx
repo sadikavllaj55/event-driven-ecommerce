@@ -54,8 +54,8 @@ export default function ProfilePage() {
     return <p className="text-gray-500">Loading profile…</p>;
 
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto w-full max-w-xl rounded-lg bg-white p-4 shadow-sm sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-900">My profile 👤</h1>
         <Link
           to={ROUTES.seller(profile.id)}
