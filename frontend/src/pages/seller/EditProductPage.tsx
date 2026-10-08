@@ -8,10 +8,11 @@ import { useAuth } from '../../auth/AuthContext';
 import { ImageUploadError, useImageUpload } from '../../hooks/useImageUpload';
 import { ROUTES } from '../../constants/routes';
 import { getErrorMessage } from '../../utils/errors';
-import ProductForm, {
+import ProductForm from '../../components/ProductForm';
+import {
   productToFormValues,
   type ExistingImage,
-} from '../../components/ProductForm';
+} from '../../components/productFormModel';
 import type { CreateProductInput } from '../../types';
 
 export default function EditProductPage() {

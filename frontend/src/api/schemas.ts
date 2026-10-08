@@ -52,6 +52,28 @@ export const productSchema = z.object({
     .transform((images) => images ?? []),
   created_at: z.iso.datetime({ offset: true }),
 });
+export const productSearchResultSchema = z
+  .object({
+    id: z.string().min(1),
+    seller_id: z.string().min(1),
+    name: z.string(),
+    price_cents: z.number().int().nonnegative(),
+    gender: z.string(),
+    brand: z.string().optional(),
+    size: z.string().optional(),
+    condition: conditionSchema.optional(),
+    image_url: z.string().optional(),
+  })
+  .transform((hit) => ({
+    id: hit.id,
+    name: hit.name,
+    price: (hit.price_cents / 100).toFixed(2),
+    brand: hit.brand ?? '',
+    size: hit.size ?? '',
+    condition: hit.condition,
+    image_url: hit.image_url ?? '',
+    images: [],
+  }));
 export const pagedProductsSchema = z.object({
   products: productSchema
     .array()

@@ -3,11 +3,13 @@ import type {
   roleSchema,
   orderStatusSchema,
   conditionSchema,
+  productSearchResultSchema,
 } from '../api/schemas';
 
 export type Role = z.infer<typeof roleSchema>;
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export type ProductCondition = z.infer<typeof conditionSchema>;
+export type ProductSearchResult = z.infer<typeof productSearchResultSchema>;
 
 export interface ProductImage {
   id: string;
@@ -36,6 +38,14 @@ export interface Product {
   category_id: string | null;
   created_at: string;
 }
+
+export type ProductCardData = Pick<
+  Product,
+  'id' | 'name' | 'price' | 'brand' | 'size' | 'image_url'
+> & {
+  condition?: ProductCondition;
+  images?: ProductImage[] | null;
+};
 
 export interface PagedProducts {
   products: Product[];
