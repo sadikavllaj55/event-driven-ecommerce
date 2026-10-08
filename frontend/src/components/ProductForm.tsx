@@ -10,6 +10,7 @@ import {
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { getErrorMessage } from '../utils/errors';
 import { conditionSchema } from '../api/schemas';
+import { GENDERS } from '../constants/product';
 import type { CreateProductInput } from '../types';
 
 interface Props {
@@ -64,6 +65,16 @@ export default function ProductForm({
       return;
     }
 
+    const condition = conditionSchema.safeParse(form.condition);
+    if (!condition.success) {
+      toast.error('Choose a condition');
+      return;
+    }
+    if (!GENDERS.some((department) => department.value === form.gender)) {
+      toast.error('Choose a department');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit(
@@ -80,7 +91,7 @@ export default function ProductForm({
           size: form.size,
           color: form.color,
           material: form.material,
-          condition: conditionSchema.parse(form.condition),
+          condition: condition.data,
           gender: form.gender,
           category_id: form.category_id || null,
         },

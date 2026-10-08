@@ -30,8 +30,8 @@ export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   size: '',
   color: '',
   material: '',
-  condition: 'good',
-  gender: 'unisex',
+  condition: '',
+  gender: '',
   category_id: '',
 };
 

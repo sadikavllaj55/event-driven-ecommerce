@@ -31,13 +31,15 @@ export default function ProductListingFields({ form, onChange }: Props) {
           label="Condition"
           value={form.condition}
           onChange={(value) => onChange('condition', value)}
-          options={CONDITIONS.map(({ value, label }) => ({ value, label }))}
+          placeholder="Select a condition"
+          options={CONDITIONS}
         />
         <SelectField
           label="Department"
           value={form.gender}
           onChange={(value) => onChange('gender', value)}
-          options={GENDERS.map(({ value, label }) => ({ value, label }))}
+          placeholder="Select a department"
+          options={GENDERS}
         />
         <SelectField
           label="Category"
@@ -65,8 +67,10 @@ function SelectField({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  options: { value: string; label: string }[];
+  options: readonly { value: string; label: string; icon?: string }[];
 }) {
+  const selected = options.find((option) => option.value === value);
+
   return (
     <Listbox value={value} onChange={onChange}>
       {({ open }) => (
@@ -75,9 +79,18 @@ function SelectField({
             {label}
           </label>
           <ListboxButton className="group flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 text-left text-sm font-medium text-gray-800 shadow-sm transition-colors hover:border-gray-300 focus:outline-none focus-visible:border-teal-500 focus-visible:ring-4 focus-visible:ring-teal-500/10">
-            <span className={value ? '' : 'text-gray-500'}>
-              {options.find((option) => option.value === value)?.label ??
-                placeholder}
+            <span
+              className={`flex min-w-0 items-center gap-2 ${value ? '' : 'text-gray-500'}`}
+            >
+              {selected?.icon && (
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center"
+                >
+                  {selected.icon}
+                </span>
+              )}
+              <span className="truncate">{selected?.label ?? placeholder}</span>
             </span>
             <span
               aria-hidden="true"
@@ -95,8 +108,21 @@ function SelectField({
                 value={option.value}
                 className="group flex min-h-10 cursor-pointer select-none items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-gray-700 outline-none data-[focus]:bg-teal-50 data-[focus]:text-teal-900 data-[selected]:font-semibold data-[selected]:text-teal-700"
               >
-                {option.label}
-                <span className="hidden text-teal-600 group-data-[selected]:block">
+                <span className="flex min-w-0 items-center gap-2">
+                  {option.icon && (
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center"
+                    >
+                      {option.icon}
+                    </span>
+                  )}
+                  <span>{option.label}</span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="hidden text-teal-600 group-data-[selected]:block"
+                >
                   ✓
                 </span>
               </ListboxOption>

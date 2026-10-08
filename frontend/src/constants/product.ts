@@ -5,11 +5,11 @@ export const MAX_PRODUCT_IMAGES = 7;
 
 // Condition values + display labels
 export const CONDITIONS = [
-  { value: 'new_with_tags', label: 'New with tags' },
-  { value: 'new_without_tags', label: 'New without tags' },
-  { value: 'very_good', label: 'Very good' },
-  { value: 'good', label: 'Good' },
-  { value: 'satisfactory', label: 'Satisfactory' },
+  { value: 'new_with_tags', label: 'New with tags', icon: '\u{1F3F7}\uFE0F' },
+  { value: 'new_without_tags', label: 'New without tags', icon: '\u2728' },
+  { value: 'very_good', label: 'Very good', icon: '\u2B50' },
+  { value: 'good', label: 'Good', icon: '\u{1F44D}' },
+  { value: 'satisfactory', label: 'Satisfactory', icon: '\u{1F44C}' },
 ] as const;
 
 // Quick lookup: value → label (e.g. conditionLabel('very_good') → 'Very good')
@@ -28,8 +28,8 @@ export const CONDITION_COLORS: Record<string, string> = {
 
 // Gender/department values + labels
 export const GENDERS = [
-  { value: 'women', label: 'Women' },
-  { value: 'men', label: 'Men' },
-  { value: 'unisex', label: 'Unisex' },
-  { value: 'kids', label: 'Kids' },
+  { value: 'women', label: 'Women', icon: '\u{1F469}' },
+  { value: 'men', label: 'Men', icon: '\u{1F468}' },
+  { value: 'unisex', label: 'Unisex', icon: '\u{1F465}' },
+  { value: 'kids', label: 'Kids', icon: '\u{1F9D2}' },
 ] as const;

@@ -1,9 +1,10 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import ProductForm from '../components/ProductForm';
 import { EMPTY_PRODUCT_FORM } from '../components/productFormModel';
+import { CONDITIONS, GENDERS } from '../constants/product';
 import { useAuth } from '../auth/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { useFavorites } from '../hooks/useFavorites';
@@ -60,7 +61,7 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
-  it('rejects an invalid discount and submits a valid seller price reduction', async () => {
+  it('requires explicit condition and department choices for a new listing', async () => {
     server.use(
       http.get(`${base}/categories`, () => HttpResponse.json([])),
       http.get(`${base}/settings/public`, () =>
@@ -71,6 +72,125 @@ describe('frontend account and failure flows', () => {
     renderApp(
       <ProductForm
         initialValues={{ ...EMPTY_PRODUCT_FORM, name: 'Jacket', price: '25' }}
+        submitLabel="Save"
+        submittingLabel="Saving"
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Select a condition' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Select a department' }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Select a condition' }),
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Good' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Select a department' }),
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Unisex' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        condition: 'good',
+        gender: 'unisex',
+        category_id: null,
+      }),
+      [],
+    );
+  });
+
+  it.each([
+    {
+      field: 'condition',
+      label: 'Good',
+      icon: CONDITIONS[3].icon,
+      options: CONDITIONS,
+    },
+    {
+      field: 'gender',
+      label: 'Unisex',
+      icon: GENDERS[2].icon,
+      options: GENDERS,
+    },
+  ])(
+    'shows $field emojis and submits the selected value',
+    async ({ field, label, icon, options }) => {
+      server.use(
+        http.get(`${base}/categories`, () => HttpResponse.json([])),
+        http.get(`${base}/settings/public`, () =>
+          HttpResponse.json({ max_images_per_product: 7 }),
+        ),
+      );
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      renderApp(
+        <ProductForm
+          initialValues={{
+            ...EMPTY_PRODUCT_FORM,
+            name: 'Jacket',
+            price: '25',
+            condition: 'good',
+            gender: 'unisex',
+          }}
+          submitLabel="Save"
+          submittingLabel="Saving"
+          onSubmit={onSubmit}
+        />,
+      );
+      const selected = screen.getByRole('button', { name: label });
+      expect(within(selected).getByText(icon)).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+      await userEvent.click(selected);
+      for (const optionData of options) {
+        const option = screen.getByRole('option', {
+          name: optionData.label,
+        });
+        expect(within(option).getByText(optionData.icon)).toHaveAttribute(
+          'aria-hidden',
+          'true',
+        );
+      }
+      await userEvent.click(
+        screen.getByRole('option', { name: options[0].label }),
+      );
+      expect(
+        within(
+          screen.getByRole('button', { name: options[0].label }),
+        ).getByText(options[0].icon),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ [field]: options[0].value }),
+        [],
+      );
+    },
+  );
+
+  it('rejects an invalid discount and submits a valid seller price reduction', async () => {
+    server.use(
+      http.get(`${base}/categories`, () => HttpResponse.json([])),
+      http.get(`${base}/settings/public`, () =>
+        HttpResponse.json({ max_images_per_product: 7 }),
+      ),
+    );
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderApp(
+      <ProductForm
+        initialValues={{
+          ...EMPTY_PRODUCT_FORM,
+          name: 'Jacket',
+          price: '25',
+          condition: 'good',
+          gender: 'unisex',
+        }}
         submitLabel="Save"
         submittingLabel="Saving"
         onSubmit={onSubmit}
@@ -104,6 +224,8 @@ describe('frontend account and failure flows', () => {
           name: 'Jacket',
           price: '25',
           original_price: '35',
+          condition: 'good',
+          gender: 'unisex',
         }}
         submitLabel="Save"
         submittingLabel="Saving"
@@ -273,6 +395,79 @@ describe('frontend account and failure flows', () => {
     expect(screen.queryByText('Alex Rivera')).not.toBeInTheDocument();
   });
 
+  it('preserves catalogue pagination and resets it when searching', async () => {
+    server.use(
+      http.get(`${base}/products`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page'));
+        return HttpResponse.json({
+          products: [
+            { ...product, name: page === 2 ? 'Green jacket' : 'Blue jacket' },
+          ],
+          total: 24,
+          page,
+          limit: 12,
+        });
+      }),
+      http.get(`${base}/categories`, () => HttpResponse.json([])),
+      http.get(`${base}/products/search`, () =>
+        HttpResponse.json([indexedProduct]),
+      ),
+    );
+    renderApp(<ProductsPage />);
+    await screen.findByText('Blue jacket');
+    expect(screen.getByRole('button', { name: /Prev/ })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /Next/ }));
+    await screen.findByText('Green jacket');
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /Prev/ }));
+    await screen.findByText('Blue jacket');
+    await userEvent.click(screen.getByRole('button', { name: /Next/ }));
+    await screen.findByText('Green jacket');
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Search for items' }),
+      'Blue',
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /Next/ }),
+      ).not.toBeInTheDocument(),
+    );
+    await screen.findByText('Blue jacket');
+    await userEvent.clear(
+      screen.getByRole('searchbox', { name: 'Search for items' }),
+    );
+    await screen.findByText('Page 1 of 2');
+    expect(screen.getByRole('button', { name: /Prev/ })).toBeDisabled();
+  });
+
+  it.each([
+    { status: 200, message: 'No members found.' },
+    { status: 500, message: 'Failed to load members.' },
+  ])(
+    'shows the member results state for HTTP $status',
+    async ({ status, message }) => {
+      server.use(
+        http.get(`${base}/products`, () =>
+          HttpResponse.json({ products: [], total: 0, page: 1, limit: 12 }),
+        ),
+        http.get(`${base}/categories`, () => HttpResponse.json([])),
+        http.get(`${base}/users/search`, () =>
+          HttpResponse.json([], { status }),
+        ),
+      );
+      renderApp(<ProductsPage />);
+      await userEvent.click(screen.getByRole('button', { name: 'Catalogue' }));
+      await userEvent.click(screen.getByRole('option', { name: 'Members' }));
+      await userEvent.type(
+        screen.getByRole('searchbox', { name: 'Search for members' }),
+        'Alex',
+      );
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByText('No items found.')).not.toBeInTheDocument();
+    },
+  );
+
   it('renders Elasticsearch search hits for department and category filters', async () => {
     const searchRequests: URLSearchParams[] = [];
     server.use(
@@ -396,6 +591,14 @@ describe('frontend account and failure flows', () => {
       'Blue jacket',
     );
     await userEvent.type(screen.getByPlaceholderText('25.00'), '25');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Select a condition' }),
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Good' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Select a department' }),
+    );
+    await userEvent.click(screen.getByRole('option', { name: 'Unisex' }));
     await userEvent.upload(container.querySelector('input[type=file]')!, [
       new File(['cover'], 'cover.png', { type: 'image/png' }),
       new File(['image'], 'photo.png', { type: 'image/png' }),
