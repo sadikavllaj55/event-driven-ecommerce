@@ -15,6 +15,22 @@ import { server } from './setup';
 import { product, renderApp, tokenFor } from './helpers';
 
 const base = 'http://localhost:8080';
+const indexedProduct = {
+  id: 'product-1',
+  seller_id: 'seller-1',
+  seller_name: 'Seller',
+  name: 'Blue jacket',
+  description: 'A warm jacket',
+  price_cents: 2500,
+  stock: 1,
+  gender: 'women',
+  brand: 'Example',
+  condition: 'good',
+  color: 'Blue',
+  material: 'Cotton',
+  category_id: 'category-shoes',
+  image_url: '',
+};
 
 function FavoritesProbe() {
   const { favoritesQuery } = useFavorites();
@@ -76,6 +92,43 @@ describe('frontend account and failure flows', () => {
       await Promise.resolve();
     });
     expect(privateRequests).toBe(0);
+  });
+
+  it('renders Elasticsearch search hits for department and category filters', async () => {
+    const searchRequests: URLSearchParams[] = [];
+    server.use(
+      http.get(`${base}/products`, () =>
+        HttpResponse.json({ products: [], total: 0, page: 1, limit: 12 }),
+      ),
+      http.get(`${base}/categories`, () =>
+        HttpResponse.json([
+          {
+            id: 'category-shoes',
+            name: 'Shoes',
+            slug: 'shoes',
+            parent_id: null,
+          },
+        ]),
+      ),
+      http.get(`${base}/products/search`, ({ request }) => {
+        searchRequests.push(new URL(request.url).searchParams);
+        return HttpResponse.json([indexedProduct]);
+      }),
+    );
+
+    renderApp(<ProductsPage />);
+    await userEvent.click(screen.getByRole('button', { name: /women/i }));
+    await screen.findByText('Blue jacket');
+    expect(searchRequests.at(-1)?.get('gender')).toBe('women');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Shoes' }));
+    await waitFor(() =>
+      expect(searchRequests.at(-1)?.get('category')).toBe('category-shoes'),
+    );
+    expect(searchRequests.at(-1)?.get('gender')).toBe('women');
+    expect(
+      screen.queryByText('Failed to load products.'),
+    ).not.toBeInTheDocument();
   });
 
   it('never displays the previous account cart while the next account loads', async () => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { productApi } from '../api/products';
 import { queryKeys } from '../api/queryKeys';
-import type { PagedProducts } from '../types';
+import type { PagedProducts, ProductCardData } from '../types';
 import ProductCard from '../components/ProductCard';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
 import Hero from '../components/Hero';
@@ -10,6 +10,10 @@ import CategoryNav from '../components/CategoryNav';
 import DepartmentTabs from '../components/DepartmentTabs';
 import { useDebounce } from '../hooks/useDebounce';
 import { PRODUCTS_PER_PAGE } from '../constants/product';
+
+type ProductResults = Omit<PagedProducts, 'products'> & {
+  products: ProductCardData[];
+};
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
@@ -22,7 +26,7 @@ export default function ProductsPage() {
   const isFiltering =
     debouncedSearch.trim() !== '' || category !== null || department !== null;
 
-  const { data, isLoading, isError, isFetching } = useQuery({
+  const { data, isLoading, isError, isFetching } = useQuery<ProductResults>({
     queryKey: [
       ...queryKeys.products,
       { page, search: debouncedSearch, category, department },
@@ -38,8 +42,8 @@ export default function ProductsPage() {
           products,
           total: products.length,
           page: 1,
-          limit: products.length,
-        } as PagedProducts;
+          limit: PRODUCTS_PER_PAGE,
+        };
       }
       return productApi.list(page, PRODUCTS_PER_PAGE);
     },

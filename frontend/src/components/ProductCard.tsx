@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import type { Product } from '../types';
+import type { ProductCardData } from '../types';
 import { ROUTES } from '../constants/routes';
 import FavoriteButton from './FavoriteButton';
 import { CONDITION_LABELS, CONDITION_COLORS } from '../constants/product';
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product }: { product: ProductCardData }) {
   const image = product.images?.[0]?.image_url ?? product.image_url;
 
   return (

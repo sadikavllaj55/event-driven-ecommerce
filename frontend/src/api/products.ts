@@ -1,6 +1,15 @@
 import { api } from './client';
-import type { PagedProducts, Product, CreateProductInput } from '../types';
-import { pagedProductsSchema, productSchema } from './schemas';
+import type {
+  PagedProducts,
+  Product,
+  ProductSearchResult,
+  CreateProductInput,
+} from '../types';
+import {
+  pagedProductsSchema,
+  productSchema,
+  productSearchResultSchema,
+} from './schemas';
 
 export const productApi = {
   // Browse (paginated)
@@ -16,11 +25,11 @@ export const productApi = {
     query: string,
     category?: string,
     gender?: string,
-  ): Promise<Product[]> => {
-    const res = await api.get<Product[]>('/products/search', {
+  ): Promise<ProductSearchResult[]> => {
+    const res = await api.get<unknown>('/products/search', {
       params: { q: query, category, gender },
     });
-    return productSchema.array().parse(res.data);
+    return productSearchResultSchema.array().parse(res.data);
   },
 
   // Single product
