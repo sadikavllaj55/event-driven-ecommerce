@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { useFavorites } from '../hooks/useFavorites';
 import ProductsPage from '../pages/ProductsPage';
+import ProductDetailPage from '../pages/ProductDetailPage';
 import ProfilePage from '../pages/ProfilePage';
 import CartPage from '../pages/CartPage';
 import SellPage from '../pages/seller/SellPage';
@@ -56,6 +57,33 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
+  it('shows the seller profile photo and name on the product page', async () => {
+    server.use(
+      http.get(`${base}/products/product-1`, () => HttpResponse.json(product)),
+      http.get(`${base}/users/seller-1/profile`, () =>
+        HttpResponse.json({
+          id: 'seller-1',
+          name: 'Alex Rivera',
+          avatar_url: 'https://images.example.test/alex.png',
+          bio: 'Vintage clothing seller',
+          created_at: '2026-10-07T12:00:00Z',
+        }),
+      ),
+    );
+
+    renderApp(
+      <Routes>
+        <Route path="/products/:id" element={<ProductDetailPage />} />
+      </Routes>,
+      '/products/product-1',
+    );
+
+    expect(
+      await screen.findByRole('img', { name: 'Alex Rivera' }),
+    ).toHaveAttribute('src', 'https://images.example.test/alex.png');
+    expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
+  });
+
   it('does not fetch private favorites for a guest', async () => {
     let requests = 0;
     server.use(
