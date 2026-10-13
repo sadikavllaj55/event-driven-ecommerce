@@ -13,20 +13,21 @@ const DEPARTMENTS = [
 
 export default function DepartmentTabs({ selected, onSelect }: Props) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 mb-6">
+    <div className="flex flex-wrap items-center gap-2">
       {DEPARTMENTS.map((dept) => {
         const isActive = selected === dept.value;
         return (
           <button
             key={dept.label}
             onClick={() => onSelect(dept.value)}
-            className={`px-3 py-2 rounded-full font-medium text-sm transition-all duration-200 sm:px-5 sm:py-2.5 ${
+            aria-pressed={isActive}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/15 sm:px-5 ${
               isActive
-                ? 'bg-teal-600 text-white shadow-md scale-105'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                ? 'border-[var(--market-primary)] bg-[var(--market-primary)] text-white shadow-sm'
+                : 'border-[var(--market-border)] bg-white text-gray-600 hover:border-[var(--market-primary)]/40 hover:bg-[var(--market-primary-soft)] hover:text-[var(--market-ink)]'
             }`}
           >
-            <span className="mr-1">{dept.emoji}</span>
+            <span aria-hidden="true">{dept.emoji}</span>
             {dept.label}
           </button>
         );

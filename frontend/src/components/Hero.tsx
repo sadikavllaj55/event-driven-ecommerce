@@ -18,11 +18,11 @@ export default function Hero({ department }: { department: string | null }) {
   const bg = BACKGROUNDS[department ?? 'all'] ?? BACKGROUNDS.all;
 
   return (
-    <div className="relative rounded-2xl overflow-hidden mb-8 h-64 md:h-80">
-      {/* Background images (stacked, crossfade) */}
+    <section className="relative mb-8 min-h-[22rem] overflow-hidden rounded-[1.75rem] bg-[var(--market-ink)] shadow-xl shadow-[var(--market-ink)]/10 sm:min-h-[25rem]">
       {Object.entries(BACKGROUNDS).map(([key, url]) => (
         <div
-          key={key}
+        key={key}
+        aria-hidden="true"
           className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
           style={{
             backgroundImage: `url(${url})`,
@@ -30,33 +30,42 @@ export default function Hero({ department }: { department: string | null }) {
           }}
         />
       ))}
-
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-black/40" />
-
-      {/* Content */}
-      <div className="relative h-full flex flex-col items-center justify-center text-center px-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-          Give fashion a second life 🌱
-        </h1>
-        <p className="text-gray-100 text-lg mb-6 max-w-xl">
-          Buy and sell pre-loved clothing, accessories, and more.
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-r from-[#102e27]/95 via-[#173d33]/75 to-[#173d33]/15"
+      />
+      <div className="relative flex min-h-[22rem] items-center px-6 py-10 sm:min-h-[25rem] sm:px-12 lg:px-16">
+        <div className="max-w-2xl">
+        <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
+          <span aria-hidden="true" className="text-emerald-300">✳</span>
+          The circular wardrobe
         </p>
-        <div className="flex items-center justify-center gap-3">
+        <h1 className="mb-4 max-w-xl text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+          Give fashion
+          <br />
+          a second life.
+        </h1>
+        <p className="mb-7 max-w-lg text-base leading-7 text-white/80 sm:text-lg">
+          Find pre-loved pieces worth keeping — and pass along the ones you
+          no longer wear.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
           <a
             href="#browse"
-            className="bg-white text-teal-600 px-6 py-3 rounded-full font-medium hover:bg-teal-50 transition-colors"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--market-ink)] shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
           >
             Browse items
+            <span aria-hidden="true">→</span>
           </a>
           <Link
             to={user ? ROUTES.sell : ROUTES.login}
-            className="bg-white/20 backdrop-blur text-white px-6 py-3 rounded-full font-medium hover:bg-white/30 transition-colors border border-white/40"
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
           >
-            Sell an item 🏷️
+            Sell an item
           </Link>
         </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

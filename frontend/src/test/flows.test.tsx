@@ -14,6 +14,7 @@ import ProfilePage from '../pages/ProfilePage';
 import CartPage from '../pages/CartPage';
 import SellPage from '../pages/seller/SellPage';
 import EditProductPage from '../pages/seller/EditProductPage';
+import Layout from '../components/layout/Layout';
 import { Route, Routes } from 'react-router-dom';
 import { server } from './setup';
 import { product, renderApp, tokenFor } from './helpers';
@@ -61,6 +62,92 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
+  it('shows the login link instead of the avatar menu to guests', () => {
+    renderApp(<Layout />);
+
+    expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /open account menu/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('provides an accessible avatar menu with supported account actions', async () => {
+    localStorage.setItem('token', tokenFor('buyer-1'));
+    server.use(
+      http.get(`${base}/users/buyer-1/profile`, () =>
+        HttpResponse.json({
+          id: 'buyer-1',
+          name: 'Alex Rivera',
+          avatar_url: 'https://images.example.test/alex.png',
+          bio: '',
+          created_at: '2026-10-07T12:00:00Z',
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp(<Layout />);
+
+    const avatarButton = await screen.findByRole('button', {
+      name: 'Open account menu for Alex Rivera',
+    });
+    expect(screen.getByRole('img', { name: 'Alex Rivera' })).toHaveAttribute(
+      'src',
+      'https://images.example.test/alex.png',
+    );
+
+    await user.click(avatarButton);
+    expect(screen.getByRole('menuitem', { name: 'Profile' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
+    expect(
+      screen.getByRole('menuitem', { name: /notifications/i }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('menuitem', { name: /messages/i }),
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument(),
+    );
+    expect(avatarButton).toHaveFocus();
+
+    await user.click(avatarButton);
+    await user.click(document.body);
+    await waitFor(() =>
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument(),
+    );
+
+    await user.click(avatarButton);
+    await user.click(screen.getByRole('menuitem', { name: 'Log out' }));
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Log in' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows profile initials in the avatar when no profile photo is set', async () => {
+    localStorage.setItem('token', tokenFor('buyer-1'));
+    server.use(
+      http.get(`${base}/users/buyer-1/profile`, () =>
+        HttpResponse.json({
+          id: 'buyer-1',
+          name: 'Alex Rivera',
+          avatar_url: '',
+          bio: '',
+          created_at: '2026-10-07T12:00:00Z',
+        }),
+      ),
+    );
+    renderApp(<Layout />);
+
+    const avatarButton = await screen.findByRole('button', {
+      name: 'Open account menu for Alex Rivera',
+    });
+    expect(avatarButton).toHaveTextContent('AR');
+  });
+
   it('requires explicit condition and department choices for a new listing', async () => {
     server.use(
       http.get(`${base}/categories`, () => HttpResponse.json([])),

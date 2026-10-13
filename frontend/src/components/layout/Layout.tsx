@@ -4,13 +4,13 @@ import {
   NavLink,
   Outlet,
   useLocation,
-  useNavigate,
   type NavLinkRenderProps,
 } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import Footer from './Footer';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import AccountMenu from './AccountMenu';
 
 const navLinkClass = ({ isActive }: NavLinkRenderProps) =>
   `inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--market-primary)]/30 ${
@@ -20,8 +20,7 @@ const navLinkClass = ({ isActive }: NavLinkRenderProps) =>
   }`;
 
 export default function Layout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const location = useLocation();
 
   return (
@@ -66,18 +65,7 @@ export default function Layout() {
                 <NavLink to={ROUTES.orders} className={navLinkClass}>
                   Orders
                 </NavLink>
-                <NavLink to={ROUTES.myProfile} className={navLinkClass}>
-                  Profile
-                </NavLink>
-                <button
-                  onClick={() => {
-                    logout();
-                    navigate(ROUTES.home);
-                  }}
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                >
-                  Log out
-                </button>
+                <AccountMenu />
               </>
             ) : (
               <Link

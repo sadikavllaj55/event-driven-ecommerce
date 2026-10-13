@@ -19,13 +19,14 @@ export default function CategoryNav({ selected, onSelect }: Props) {
   if (roots.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6">
+    <div className="flex items-center gap-2 overflow-x-auto pb-1">
       <button
         onClick={() => onSelect(null)}
-        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+        aria-pressed={selected === null}
+        className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/15 ${
           selected === null
-            ? 'bg-teal-600 text-white'
-            : 'bg-white text-gray-700 hover:bg-gray-100'
+            ? 'border-[var(--market-primary)] bg-[var(--market-primary)] text-white'
+            : 'border-[var(--market-border)] bg-white text-gray-600 hover:border-[var(--market-primary)]/40 hover:bg-[var(--market-primary-soft)] hover:text-[var(--market-ink)]'
         }`}
       >
         All
@@ -34,10 +35,11 @@ export default function CategoryNav({ selected, onSelect }: Props) {
         <button
           key={cat.id}
           onClick={() => onSelect(cat.id)}
-          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+          aria-pressed={selected === cat.id}
+          className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/15 ${
             selected === cat.id
-              ? 'bg-teal-600 text-white'
-              : 'bg-white text-gray-700 hover:bg-gray-100'
+              ? 'border-[var(--market-primary)] bg-[var(--market-primary)] text-white'
+              : 'border-[var(--market-border)] bg-white text-gray-600 hover:border-[var(--market-primary)]/40 hover:bg-[var(--market-primary-soft)] hover:text-[var(--market-ink)]'
           }`}
         >
           {cat.name}

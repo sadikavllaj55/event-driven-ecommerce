@@ -11,16 +11,16 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       to={ROUTES.product(product.id)}
-      className="group block bg-white rounded-xl shadow-sm hover:shadow-lg transition-all overflow-hidden"
+      className="group block overflow-hidden rounded-2xl border border-[var(--market-border)]/80 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-[var(--market-ink)]/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/20"
     >
       {/* Image */}
-      <div className="relative aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+      <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-[#edf2ef]">
         {image ? (
           <img
             src={image}
             alt={product.name}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <span className="text-gray-300 text-5xl">🛍️</span>
@@ -28,7 +28,7 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
         {/* Condition badge */}
         {product.condition && (
           <span
-            className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+            className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[11px] font-medium shadow-sm backdrop-blur-sm ${
               CONDITION_COLORS[product.condition] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
@@ -38,13 +38,13 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
       </div>
 
       {/* Info */}
-      <div className="p-3">
+      <div className="p-3 sm:p-4">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="truncate text-sm font-semibold text-[var(--market-ink)]">
               {product.name}
             </p>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="truncate text-xs text-gray-500">
               {product.brand && <span>{product.brand}</span>}
               {product.size && <span> · {product.size}</span>}
             </p>

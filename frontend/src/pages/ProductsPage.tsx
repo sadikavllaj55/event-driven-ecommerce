@@ -66,50 +66,83 @@ export default function ProductsPage() {
     data && !isFiltering ? Math.ceil(data.total / PRODUCTS_PER_PAGE) : 1;
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <Hero department={department} />
-      {/* Department tabs */}
       {!searchingMembers && (
-        <DepartmentTabs
-          selected={department}
-          onSelect={(d) => {
-            setDepartment(d);
+        <section aria-label="Shop by department" className="mb-7">
+          <div className="mb-3 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--market-primary)]">
+                Start exploring
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--market-ink)]">
+                Shop by department
+              </h2>
+            </div>
+          </div>
+          <DepartmentTabs
+            selected={department}
+            onSelect={(d) => {
+              setDepartment(d);
+              setPage(1);
+            }}
+          />
+        </section>
+      )}
+
+      <section className="mb-9 rounded-2xl border border-[var(--market-border)] bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--market-primary)]">
+            Your next favorite is out there
+          </p>
+        </div>
+        <BrowseSearchBar
+          mode={searchMode}
+          search={search}
+          onModeChange={(mode) => {
+            setSearchMode(mode);
+            setPage(1);
+          }}
+          onSearchChange={(value) => {
+            setSearch(value);
             setPage(1);
           }}
         />
-      )}
+        {!searchingMembers && (
+          <div className="mt-4 border-t border-[var(--market-border)] pt-4">
+            <p className="mb-3 text-xs font-medium text-gray-500">
+              Explore categories
+            </p>
+            <CategoryNav
+              selected={category}
+              onSelect={(c) => {
+                setCategory(c);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
+      </section>
 
-      <BrowseSearchBar
-        mode={searchMode}
-        search={search}
-        onModeChange={(mode) => {
-          setSearchMode(mode);
-          setPage(1);
-        }}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
-      />
-
-      {/* Category filter */}
-      {!searchingMembers && (
-        <CategoryNav
-          selected={category}
-          onSelect={(c) => {
-            setCategory(c);
-            setPage(1);
-          }}
-        />
-      )}
-
-      <h1 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--market-primary)]">
+            {searchingMembers ? 'Community' : 'Thoughtfully re-loved'}
+          </p>
+          <h2 className="text-2xl font-semibold tracking-tight text-[var(--market-ink)] sm:text-3xl">
         {debouncedSearch
           ? `Results for "${debouncedSearch}"`
           : searchingMembers
             ? 'Members'
             : 'Browse items'}
-      </h1>
+          </h2>
+        </div>
+        {!searchingMembers && data?.total !== undefined && !isFiltering && (
+          <p className="pb-1 text-sm text-gray-500">
+            {data.total} {data.total === 1 ? 'piece' : 'pieces'} to discover
+          </p>
+        )}
+      </div>
 
       {searchingMembers ? (
         <MemberSearchResults

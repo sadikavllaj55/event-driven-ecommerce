@@ -29,18 +29,27 @@ export default function CatalogueResults({
   return (
     <>
       {isLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {Array.from({ length: PRODUCTS_PER_PAGE }).map((_, index) => (
             <ProductCardSkeleton key={index} />
           ))}
         </div>
       )}
-      {isError && <p className="text-red-500">Failed to load products.</p>}
+      {isError && (
+        <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Failed to load products. Please try again.
+        </p>
+      )}
       {products?.length === 0 && (
-        <p className="text-gray-500">No items found.</p>
+        <div className="rounded-2xl border border-dashed border-[var(--market-border)] bg-white px-5 py-12 text-center">
+          <p className="font-medium text-[var(--market-ink)]">No items found.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Try a different search or category.
+          </p>
+        </div>
       )}
       <div
-        className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-opacity duration-300 ${
+        className={`grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-5 transition-opacity duration-300 ${
           isFetching ? 'opacity-50' : 'opacity-100'
         }`}
       >
@@ -49,21 +58,21 @@ export default function CatalogueResults({
         ))}
       </div>
       {showPagination && (
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-10 flex items-center justify-center gap-4">
           <button
             onClick={onPrevious}
             disabled={page === 1}
-            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+            className="min-h-10 rounded-full border border-[var(--market-border)] bg-white px-5 py-2 text-sm font-medium text-[var(--market-ink)] shadow-sm transition hover:bg-[var(--market-primary-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             &larr; Prev
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm tabular-nums text-gray-600">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={onNext}
             disabled={page >= totalPages}
-            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+            className="min-h-10 rounded-full border border-[var(--market-border)] bg-white px-5 py-2 text-sm font-medium text-[var(--market-ink)] shadow-sm transition hover:bg-[var(--market-primary-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next &rarr;
           </button>

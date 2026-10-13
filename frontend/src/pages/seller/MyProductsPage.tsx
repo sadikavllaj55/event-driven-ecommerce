@@ -21,7 +21,7 @@ export default function MyProductsPage() {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: [...queryKeys.myProducts(user?.sub), page],
     queryFn: () => productApi.listMine(page, LISTINGS_PER_PAGE),
     enabled: !!user,
@@ -57,37 +57,101 @@ export default function MyProductsPage() {
     onError: (err) => toast.error(getErrorMessage(err, 'Delete failed')),
   });
 
-  if (isLoading) return <p className="text-gray-500">Loading…</p>;
+  if (isLoading)
+    return (
+      <div className="mx-auto max-w-6xl" role="status" aria-label="Loading listings">
+        <div className="mb-7">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--market-primary)]">
+            Seller studio
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--market-ink)] sm:text-4xl">
+            My listings
+          </h1>
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex animate-pulse items-center gap-4 rounded-2xl border border-[var(--market-border)] bg-white p-4"
+            >
+              <div className="h-16 w-16 shrink-0 rounded-xl bg-gray-200" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-2/5 rounded bg-gray-200" />
+                <div className="h-3 w-1/5 rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">
-          My listings 🏷️{' '}
-          <span className="text-sm font-normal text-gray-500">({total})</span>
-        </h1>
-        <Link
-          to={ROUTES.sell}
-          className="w-fit max-w-full whitespace-nowrap bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-700"
-        >
-          + Sell an item
-        </Link>
-      </div>
-
-      {total === 0 && (
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <p className="text-gray-500">No listings yet.</p>
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--market-primary)]">
+            Seller studio
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--market-ink)] sm:text-4xl">
+            My listings
+          </h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500 sm:text-base">
+            Keep your pieces up to date and ready for their next home.
+          </p>
+        </div>
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <p className="text-sm text-gray-500">
+            {total} {total === 1 ? 'piece' : 'pieces'} listed
+          </p>
           <Link
             to={ROUTES.sell}
-            className="inline-block mt-4 text-teal-600 hover:underline"
+            className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[var(--market-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--market-primary-hover)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/20"
           >
-            List your first item →
+            <span aria-hidden="true">+</span> Sell an item
+          </Link>
+        </div>
+      </div>
+
+      {isError && (
+        <div
+          role="alert"
+          className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"
+        >
+          <p className="font-medium">Failed to load your listings.</p>
+          <button
+            onClick={() => void refetch()}
+            className="mt-3 rounded-full border border-red-200 bg-white px-4 py-2 font-medium transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/15"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!isError && total === 0 && (
+        <div className="rounded-2xl border border-dashed border-[var(--market-border)] bg-white px-5 py-14 text-center shadow-sm">
+          <span
+            aria-hidden="true"
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--market-primary-soft)] text-2xl text-[var(--market-primary)]"
+          >
+            ♧
+          </span>
+          <h2 className="text-lg font-semibold text-[var(--market-ink)]">
+            No listings yet.
+          </h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
+            Give a well-loved piece a new home. Your first listing starts here.
+          </p>
+          <Link
+            to={ROUTES.sell}
+            className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--market-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--market-primary-hover)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/20"
+          >
+            List your first item <span aria-hidden="true">→</span>
           </Link>
         </div>
       )}
 
       <div
-        className={`space-y-3 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}
+        className={`space-y-3 transition-opacity duration-200 ${isFetching ? 'opacity-60' : 'opacity-100'}`}
       >
         {products.map((product) => (
           <SellerProductRow
@@ -103,21 +167,21 @@ export default function MyProductsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="mt-10 flex items-center justify-center gap-4">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+            className="min-h-10 rounded-full border border-[var(--market-border)] bg-white px-5 py-2 text-sm font-medium text-[var(--market-ink)] shadow-sm transition hover:bg-[var(--market-primary-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             ← Prev
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm tabular-nums text-gray-600">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="px-4 py-2 rounded bg-white shadow-sm disabled:opacity-40"
+            className="min-h-10 rounded-full border border-[var(--market-border)] bg-white px-5 py-2 text-sm font-medium text-[var(--market-ink)] shadow-sm transition hover:bg-[var(--market-primary-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next →
           </button>

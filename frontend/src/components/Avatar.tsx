@@ -4,7 +4,7 @@ const SIZES = {
   lg: 'w-20 h-20 text-2xl',
 };
 
-// Shows the avatar image, or the first letter of the name as a fallback
+// Shows the avatar image, or the user's initials as a fallback
 export default function Avatar({
   url,
   name,
@@ -15,6 +15,15 @@ export default function Avatar({
   size?: keyof typeof SIZES;
 }) {
   const sizeClass = SIZES[size];
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || '?';
 
   if (url) {
     return (
@@ -29,7 +38,7 @@ export default function Avatar({
     <div
       className={`${sizeClass} rounded-full bg-teal-100 text-teal-700 font-bold flex items-center justify-center`}
     >
-      {name.charAt(0).toUpperCase() || '?'}
+      {initials}
     </div>
   );
 }
