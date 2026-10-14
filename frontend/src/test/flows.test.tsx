@@ -63,6 +63,36 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
+  it('preserves two-factor login with a labeled code field and submission state', async () => {
+    let finish: (() => void) | undefined;
+    let submitted: unknown;
+    server.use(
+      http.post(`${base}/login`, () => HttpResponse.json({ error: '2FA required' }, { status: 428 })),
+      http.post(`${base}/login/2fa`, async ({ request }) => {
+        submitted = await request.json();
+        await new Promise<void>((resolve) => { finish = resolve; });
+        return HttpResponse.json({ token: tokenFor('buyer-1') });
+      }),
+    );
+    renderApp(
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<p>Signed in successfully</p>} />
+      </Routes>,
+      '/login',
+    );
+    await userEvent.type(screen.getByLabelText('Email'), 'buyer-1@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    await userEvent.type(await screen.findByLabelText('Authentication code'), '123456');
+    await userEvent.click(screen.getByRole('button', { name: 'Verify' }));
+    expect(screen.getByRole('button', { name: 'Verifying...' })).toBeDisabled();
+    await waitFor(() => expect(finish).toBeDefined());
+    expect(submitted).toEqual({ email: 'buyer-1@example.com', code: '123456' });
+    finish?.();
+    expect(await screen.findByText('Signed in successfully')).toBeInTheDocument();
+  });
+
   it('registers with full name and a normalized username and preserves verification flow', async () => {
     let submitted: unknown;
     server.use(
