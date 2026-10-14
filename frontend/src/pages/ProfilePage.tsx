@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { getErrorMessage } from '../utils/errors';
 import Avatar from '../components/Avatar';
+import VerifiedBadge from '../components/VerifiedBadge';
 import PhoneNumberField from '../components/PhoneNumberField';
 import type { AccountProfile, Profile, ProfileUpdate } from '../types';
 
@@ -80,7 +81,10 @@ export default function ProfilePage() {
               <Avatar url={profile.avatar_url} name={profile.name} size="lg" />
             </div>
             <div className="min-w-0">
-              <h2 className="break-words text-xl font-semibold text-[var(--market-ink)]">{profile.name}</h2>
+              <h2 className="flex items-center gap-2 text-xl font-semibold text-[var(--market-ink)]">
+                <span className="min-w-0 break-words">{profile.name}</span>
+                <VerifiedBadge verified={profile.profile_verified} />
+              </h2>
               <p className="mt-1 text-sm text-gray-500">{profile.username ? `@${profile.username}` : 'No username set'}</p>
               <p className="mt-2 text-xs text-gray-500">
                 Member since {new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
@@ -167,7 +171,7 @@ export default function ProfilePage() {
 }
 
 function toPublicProfile(profile: AccountProfile): Profile {
-  return { id: profile.id, name: profile.name, username: profile.username, avatar_url: profile.avatar_url, bio: profile.bio, created_at: profile.created_at };
+  return { id: profile.id, name: profile.name, username: profile.username, profile_verified: profile.profile_verified, avatar_url: profile.avatar_url, bio: profile.bio, created_at: profile.created_at };
 }
 
 function ProfileEditor({ profile, onSaved, onCancel, uploading }: {

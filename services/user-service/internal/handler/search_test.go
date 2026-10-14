@@ -54,7 +54,7 @@ func TestPrivateAccountProfile(t *testing.T) {
 		t.Fatal("public profile leaked contact details")
 	}
 
-	for _, body := range []string{`{"email":"changed@example.test"}`, `{"created_at":"2020-01-01"}`, `{"id":"other"}`} {
+	for _, body := range []string{`{"email":"changed@example.test"}`, `{"created_at":"2020-01-01"}`, `{"id":"other"}`, `{"profile_verified":true}`} {
 		request = httptest.NewRequest(http.MethodPut, "/profile", strings.NewReader(body))
 		request.Header.Set("X-User-ID", "member")
 		response = httptest.NewRecorder()
@@ -91,7 +91,7 @@ func TestSearchProfiles(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &profiles); err != nil {
 		t.Fatal(err)
 	}
-	if len(profiles) != 1 || profiles[0]["name"] != "Alex Rivera" || profiles[0]["username"] != "alex" || len(profiles[0]) != 6 {
+	if len(profiles) != 1 || profiles[0]["name"] != "Alex Rivera" || profiles[0]["username"] != "alex" || len(profiles[0]) != 7 {
 		t.Fatalf("expected only public profile fields, got %v", profiles)
 	}
 

@@ -30,6 +30,7 @@ export interface AdminUser {
   role: Role;
   status: string;
   verified: boolean;
+  profile_verified: boolean;
   created_at: string;
 }
 
@@ -56,6 +57,10 @@ export const adminApi = {
 
   setUserRole: async (id: string, role: Role): Promise<void> => {
     await api.patch(`/admin/users/${id}/role`, { role });
+  },
+
+  setProfileVerification: async (id: string, verified: boolean): Promise<void> => {
+    await api.patch(`/admin/users/${id}/profile-verification`, { profile_verified: verified });
   },
 
   listSettings: async (): Promise<Setting[]> => {

@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { PRODUCTS_PER_PAGE } from '../constants/product';
 import Avatar from '../components/Avatar';
+import VerifiedBadge from '../components/VerifiedBadge';
 import ProductCard from '../components/ProductCard';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
 
@@ -57,7 +58,10 @@ export default function SellerShopPage() {
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
         <Avatar url={profile.avatar_url} name={profile.name} size="lg" />
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900">{profile.name}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <span className="min-w-0 break-words">{profile.name}</span>
+            <VerifiedBadge verified={profile.profile_verified} />
+          </h1>
           <p className="text-sm text-gray-500">
             Member since {new Date(profile.created_at).toLocaleDateString()} ·{' '}
             {total} item

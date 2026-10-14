@@ -1,6 +1,7 @@
 import type { AdminUser } from '../../api/admin';
 import { roleSchema } from '../../api/schemas';
 import type { Role } from '../../types';
+import VerifiedBadge from '../../components/VerifiedBadge';
 
 const roleStyles: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700',
@@ -13,6 +14,8 @@ interface Props {
   currentUserId: string;
   onRoleChange: (id: string, role: Role) => void;
   onStatusChange: (id: string, status: 'active' | 'banned') => void;
+  onVerificationChange: (id: string, verified: boolean) => void;
+  verificationPending: boolean;
 }
 
 export default function AdminUserList({
@@ -20,6 +23,8 @@ export default function AdminUserList({
   currentUserId,
   onRoleChange,
   onStatusChange,
+  onVerificationChange,
+  verificationPending,
 }: Props) {
   return (
     <>
@@ -34,6 +39,9 @@ export default function AdminUserList({
               <div className="flex items-start justify-between gap-3">
                 <UserIdentity account={account} />
                 <UserStatus account={account} />
+              </div>
+              <div className="mt-3">
+                <VerificationAction account={account} disabled={isSelf || verificationPending} onChange={onVerificationChange} />
               </div>
               <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
                 <RoleSelect
@@ -81,11 +89,14 @@ export default function AdminUserList({
                     <UserStatus account={account} />
                   </td>
                   <td className="px-4 py-3">
-                    <StatusAction
-                      account={account}
-                      isSelf={isSelf}
-                      onChange={onStatusChange}
-                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <VerificationAction account={account} disabled={isSelf || verificationPending} onChange={onVerificationChange} />
+                      <StatusAction
+                        account={account}
+                        isSelf={isSelf}
+                        onChange={onStatusChange}
+                      />
+                    </div>
                   </td>
                 </tr>
               );
@@ -100,9 +111,30 @@ export default function AdminUserList({
 function UserIdentity({ account }: { account: AdminUser }) {
   return (
     <div className="min-w-0">
-      <div className="truncate font-medium text-gray-900">{account.name}</div>
+      <div className="flex items-center gap-2 font-medium text-gray-900">
+        <span className="truncate">{account.name}</span>
+        <VerifiedBadge verified={account.profile_verified} />
+      </div>
       <div className="break-all text-xs text-gray-500">{account.email}</div>
     </div>
+  );
+}
+
+function VerificationAction({ account, disabled, onChange }: {
+  account: AdminUser;
+  disabled: boolean;
+  onChange: Props['onVerificationChange'];
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`${account.profile_verified ? 'Revoke verification for' : 'Verify profile for'} ${account.name}`}
+      disabled={disabled}
+      onClick={() => onChange(account.id, !account.profile_verified)}
+      className="rounded-full border border-[var(--market-border)] px-3 py-1.5 text-xs font-medium text-[var(--market-primary)] transition hover:bg-[var(--market-page)] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {account.profile_verified ? 'Revoke verification' : 'Verify profile'}
+    </button>
   );
 }
 

@@ -7,6 +7,7 @@ import { profileApi } from '../../api/profile';
 import { queryKeys } from '../../api/queryKeys';
 import { ROUTES } from '../../constants/routes';
 import Avatar from '../Avatar';
+import VerifiedBadge from '../VerifiedBadge';
 
 function MenuIcon({ children }: { children: ReactNode }) {
   return (
@@ -97,8 +98,9 @@ export default function AccountMenu() {
         className="z-50 w-[min(18rem,calc(100vw-1.5rem))] origin-top-right rounded-2xl border border-[var(--market-border)] bg-white p-2 shadow-xl shadow-[var(--market-ink)]/10 outline-none transition duration-150 ease-out data-closed:scale-95 data-closed:opacity-0"
       >
         <div className="mb-1 border-b border-[var(--market-border)] px-3 py-3">
-          <p className="truncate text-sm font-semibold text-[var(--market-ink)]">
-            {displayName}
+          <p className="flex items-center gap-2 text-sm font-semibold text-[var(--market-ink)]">
+            <span className="truncate">{displayName}</span>
+            <VerifiedBadge verified={profile?.profile_verified} />
           </p>
           <p className="truncate text-xs text-gray-500">{user.email}</p>
         </div>

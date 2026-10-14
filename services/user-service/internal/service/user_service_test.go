@@ -54,6 +54,55 @@ func (repo *profileRepository) UpdateStatus(ctx context.Context, id, status stri
 	return nil
 }
 
+func (repo *profileRepository) UpdateProfileVerification(ctx context.Context, id string, verified bool) error {
+	user, found := repo.users[id]
+	if !found {
+		return domain.ErrUserNotFound
+	}
+	user.ProfileVerified = verified
+	repo.users[id] = user
+	return nil
+}
+
+func TestProfileVerification(t *testing.T) {
+	ctx := context.Background()
+	repo := &profileRepository{users: map[string]domain.User{
+		"admin":        {ID: "admin", Role: domain.RoleAdmin, Status: domain.UserStatusActive},
+		"member":       {ID: "member", Role: domain.RoleBuyer, Status: domain.UserStatusActive, Verified: true},
+		"banned-admin": {ID: "banned-admin", Role: domain.RoleAdmin, Status: domain.UserStatusBanned},
+	}}
+	search := &profileSearch{documents: map[string]domain.Profile{}}
+	svc := NewUserService(repo, nil, nil, nil, nil, search)
+	for _, verified := range []bool{true, true, false, false} {
+		if err := svc.SetProfileVerification(ctx, "admin", "member", verified); err != nil {
+			t.Fatal(err)
+		}
+		public, err := svc.GetProfile(ctx, "member")
+		if err != nil {
+			t.Fatal(err)
+		}
+		private, err := svc.GetAccountProfile(ctx, "member")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if public.ProfileVerified != verified || private.ProfileVerified != verified ||
+			search.documents["member"].ProfileVerified != verified || !repo.users["member"].Verified {
+			t.Fatal("verification must persist, propagate publicly, and leave email verification unchanged")
+		}
+	}
+	for _, actor := range []string{"member", "banned-admin", "missing", ""} {
+		if err := svc.SetProfileVerification(ctx, actor, "member", true); !errors.Is(err, domain.ErrAdminRequired) {
+			t.Fatalf("expected forbidden for %q, got %v", actor, err)
+		}
+	}
+	if err := svc.SetProfileVerification(ctx, "admin", "admin", true); !errors.Is(err, domain.ErrCannotSelfModify) {
+		t.Fatalf("expected self-verification rejection, got %v", err)
+	}
+	if err := svc.SetProfileVerification(ctx, "admin", "missing", true); !errors.Is(err, domain.ErrUserNotFound) {
+		t.Fatalf("expected missing target rejection, got %v", err)
+	}
+}
+
 func (repo *profileRepository) UpdateBio(ctx context.Context, id, bio string) error {
 	user := repo.users[id]
 	user.Bio = bio

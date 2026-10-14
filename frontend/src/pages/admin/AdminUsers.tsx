@@ -13,7 +13,7 @@ export default function AdminUsers() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.adminUsers(user?.sub),
     queryFn: adminApi.listUsers,
     enabled: user?.role === 'admin',
@@ -43,8 +43,30 @@ export default function AdminUsers() {
       toast.error(getErrorMessage(err, 'Failed to update role')),
   });
 
+  const setVerification = useMutation({
+    mutationFn: ({ id, verified }: { id: string; verified: boolean }) =>
+      adminApi.setProfileVerification(id, verified),
+    onSuccess: async (_, { id, verified }) => {
+      toast.success(verified ? 'Profile verified' : 'Profile verification revoked');
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.adminUsers(user?.sub) }),
+        qc.invalidateQueries({ queryKey: queryKeys.profile(id) }),
+        qc.invalidateQueries({ queryKey: queryKeys.accountProfile(id) }),
+        qc.invalidateQueries({ queryKey: ['members'] }),
+      ]);
+    },
+    onError: (err) =>
+      toast.error(getErrorMessage(err, 'Failed to update profile verification')),
+  });
+
   if (user?.role !== 'admin') return <Navigate to={ROUTES.home} replace />;
   if (isLoading) return <p className="text-gray-500">Loading users…</p>;
+  if (isError) return (
+    <div role="alert">
+      <p className="text-red-700">Failed to load users.</p>
+      <button onClick={() => void refetch()} className="mt-2 text-teal-600 hover:underline">Try again</button>
+    </div>
+  );
 
   return (
     <div>
@@ -65,6 +87,8 @@ export default function AdminUsers() {
         currentUserId={user.sub}
         onRoleChange={(id, role) => setRole.mutate({ id, role })}
         onStatusChange={(id, status) => setStatus.mutate({ id, status })}
+        onVerificationChange={(id, verified) => setVerification.mutate({ id, verified })}
+        verificationPending={setVerification.isPending}
       />
     </div>
   );

@@ -114,6 +114,7 @@ export interface Profile {
   id: string;
   name: string;
   username?: string;
+  profile_verified?: boolean;
   avatar_url: string;
   bio: string;
   created_at: string;

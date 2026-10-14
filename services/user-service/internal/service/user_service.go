@@ -323,6 +323,27 @@ func (s *UserService) SetUserRole(ctx context.Context, adminID, targetID, role s
 	return s.repo.UpdateRole(ctx, targetID, role)
 }
 
+func (s *UserService) SetProfileVerification(ctx context.Context, adminID, targetID string, verified bool) error {
+	admin, err := s.repo.GetByID(ctx, adminID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return domain.ErrAdminRequired
+		}
+		return err
+	}
+	if admin.Role != domain.RoleAdmin || admin.Status != domain.UserStatusActive {
+		return domain.ErrAdminRequired
+	}
+	if adminID == targetID {
+		return domain.ErrCannotSelfModify
+	}
+	if err := s.repo.UpdateProfileVerification(ctx, targetID, verified); err != nil {
+		return err
+	}
+	s.syncProfile(ctx, targetID)
+	return nil
+}
+
 // Stats returns user counts (for admin dashboard)
 func (s *UserService) Stats(ctx context.Context) (map[string]int, error) {
 	return s.repo.CountUsers(ctx)

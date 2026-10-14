@@ -12,6 +12,7 @@ func (r *PostgresUserRepository) MigrateProfiles(ctx context.Context) error {
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_verified BOOLEAN NOT NULL DEFAULT false`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (lower(username)) WHERE username <> ''`,
 	} {
 		if _, err := tx.Exec(ctx, statement); err != nil {

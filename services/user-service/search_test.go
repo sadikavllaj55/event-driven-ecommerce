@@ -28,7 +28,7 @@ func TestMemberSearch(t *testing.T) {
 			}
 
 			mappings := mapping["mappings"].(map[string]any)
-			if mappings["dynamic"] != "strict" || len(mappings["properties"].(map[string]any)) != 6 {
+			if mappings["dynamic"] != "strict" || len(mappings["properties"].(map[string]any)) != 7 {
 				t.Errorf("unexpected public profile mapping: %v", mapping)
 			}
 			json.NewEncoder(writer).Encode(map[string]bool{"acknowledged": true})
@@ -37,7 +37,7 @@ func TestMemberSearch(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&document); err != nil {
 				t.Error(err)
 			}
-			if len(document) != 6 || document["name"] != "Sadik" || request.URL.Query().Get("refresh") != "true" {
+			if len(document) != 7 || document["name"] != "Sadik" || request.URL.Query().Get("refresh") != "true" {
 				t.Errorf("unexpected indexed public profile: %v", document)
 			}
 			json.NewEncoder(writer).Encode(map[string]string{"result": "created"})
@@ -98,6 +98,10 @@ func TestExistingMemberIndexUsernameMapping(t *testing.T) {
 			username := mapping["properties"].(map[string]any)["username"].(map[string]any)
 			if username["type"] != "keyword" || username["index"] != false {
 				t.Errorf("unexpected username mapping: %v", mapping)
+			}
+			verification := mapping["properties"].(map[string]any)["profile_verified"].(map[string]any)
+			if verification["type"] != "boolean" || verification["index"] != false {
+				t.Errorf("unexpected profile verification mapping: %v", mapping)
 			}
 			json.NewEncoder(writer).Encode(map[string]bool{"acknowledged": true})
 		default:

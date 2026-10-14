@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { Profile } from '../types';
 import { ROUTES } from '../constants/routes';
 import Avatar from './Avatar';
+import VerifiedBadge from './VerifiedBadge';
 
 interface MemberSearchResultsProps {
   search: string;
@@ -41,8 +42,9 @@ export default function MemberSearchResults({
             >
               <Avatar url={member.avatar_url} name={member.name} />
               <div className="min-w-0">
-                <p className="break-words font-medium text-gray-900">
-                  {member.name}
+                <p className="flex items-center gap-2 font-medium text-gray-900">
+                  <span className="min-w-0 break-words">{member.name}</span>
+                  <VerifiedBadge verified={member.profile_verified} />
                 </p>
                 {member.bio && (
                   <p className="line-clamp-2 break-words text-sm text-gray-500">

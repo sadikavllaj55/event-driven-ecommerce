@@ -350,6 +350,14 @@ app.post(
   gateway(PRODUCT_SERVICE_URL),
 );
 
+app.patch(
+  '/admin/users/:id/profile-verification',
+  authenticate,
+  requireRole('admin'),
+  injectUserId,
+  gateway(USER_SERVICE_URL),
+);
+
 app.listen(Number(PORT), () => {
   console.log(`API Gateway running on port ${PORT}`);
 });

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
+import VerifiedBadge from '../components/VerifiedBadge';
 import FavoriteButton from '../components/FavoriteButton';
 import ProductPrice from '../components/ProductPrice';
 import { ROUTES } from '../constants/routes';
@@ -90,8 +91,9 @@ export default function ProductPurchasePanel({
           size="sm"
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-[var(--market-ink)]">
-            {sellerName}
+          <span className="flex items-center gap-2 text-sm font-semibold text-[var(--market-ink)]">
+            <span className="min-w-0 break-words">{sellerName}</span>
+            <VerifiedBadge verified={sellerProfile?.profile_verified} />
           </span>
         </span>
         <span aria-hidden="true" className="text-lg text-gray-400">

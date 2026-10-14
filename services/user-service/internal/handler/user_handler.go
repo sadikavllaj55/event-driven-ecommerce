@@ -210,6 +210,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 	case errors.Is(err, domain.ErrEmailNotVerified):
 		writeError(w, http.StatusForbidden, "please verify your email before logging in")
+	case errors.Is(err, domain.ErrAdminRequired):
+		writeError(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, domain.ErrUserNotFound):
 		writeError(w, http.StatusNotFound, "user not found")
 	case errors.Is(err, domain.ErrInvalidToken):

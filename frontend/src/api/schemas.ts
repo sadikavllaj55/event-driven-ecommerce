@@ -95,6 +95,7 @@ export const profileSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   username: z.string().optional(),
+  profile_verified: z.boolean().optional(),
   avatar_url: z.string(),
   bio: z.string(),
   created_at: z.iso.datetime({ offset: true }),

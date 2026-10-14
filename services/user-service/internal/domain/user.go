@@ -7,32 +7,34 @@ import (
 
 // User represents a registered user
 type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	Name         string    `json:"name"`
-	Role         string    `json:"role"`
-	Status       string    `json:"status"`
-	Verified     bool      `json:"verified"`
-	TOTPSecret   string    `json:"-"` // never expose the secret
-	TOTPEnabled  bool      `json:"totp_enabled"`
-	AvatarURL    string    `json:"avatar_url"`
-	Bio          string    `json:"bio"`
-	Username     string    `json:"username"`
-	Phone        string    `json:"-"`
-	Location     string    `json:"location"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID              string    `json:"id"`
+	Email           string    `json:"email"`
+	PasswordHash    string    `json:"-"`
+	Name            string    `json:"name"`
+	Role            string    `json:"role"`
+	Status          string    `json:"status"`
+	Verified        bool      `json:"verified"`
+	ProfileVerified bool      `json:"profile_verified"`
+	TOTPSecret      string    `json:"-"` // never expose the secret
+	TOTPEnabled     bool      `json:"totp_enabled"`
+	AvatarURL       string    `json:"avatar_url"`
+	Bio             string    `json:"bio"`
+	Username        string    `json:"username"`
+	Phone           string    `json:"-"`
+	Location        string    `json:"location"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 // Profile is the PUBLIC view of a user (seller shop page).
 // It deliberately has no email, role, status, or 2FA fields.
 type Profile struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Username  string    `json:"username"`
-	AvatarURL string    `json:"avatar_url"`
-	Bio       string    `json:"bio"`
-	CreatedAt time.Time `json:"created_at"` // "member since"
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Username        string    `json:"username"`
+	ProfileVerified bool      `json:"profile_verified"`
+	AvatarURL       string    `json:"avatar_url"`
+	Bio             string    `json:"bio"`
+	CreatedAt       time.Time `json:"created_at"` // "member since"
 }
 
 type AccountProfile struct {
@@ -60,12 +62,13 @@ func (u User) ToAccountProfile() AccountProfile {
 // ToProfile converts a User into its public Profile
 func (u User) ToProfile() Profile {
 	return Profile{
-		ID:        u.ID,
-		Name:      u.Name,
-		Username:  u.Username,
-		AvatarURL: u.AvatarURL,
-		Bio:       u.Bio,
-		CreatedAt: u.CreatedAt,
+		ID:              u.ID,
+		Name:            u.Name,
+		Username:        u.Username,
+		ProfileVerified: u.ProfileVerified,
+		AvatarURL:       u.AvatarURL,
+		Bio:             u.Bio,
+		CreatedAt:       u.CreatedAt,
 	}
 }
 
@@ -126,6 +129,7 @@ var (
 	ErrUserBanned         = errors.New("account is banned")
 	ErrInvalidStatus      = errors.New("status must be 'active' or 'banned'")
 	ErrCannotSelfModify   = errors.New("admins cannot modify their own account")
+	ErrAdminRequired      = errors.New("an active admin account is required")
 	ErrBioTooLong         = errors.New("bio must be at most 500 characters")
 	ErrInvalidImage       = errors.New("file must be an image")
 	ErrImageTooLarge      = errors.New("image must be at most 2 MB")

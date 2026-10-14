@@ -40,7 +40,7 @@ func NewMemberSearch(address string) (*MemberSearch, error) {
 	if response.StatusCode == http.StatusOK {
 		response, err := client.Indices.PutMapping(
 			[]string{memberIndex},
-			bytes.NewBufferString(`{"properties":{"username":{"type":"keyword","index":false}}}`),
+			bytes.NewBufferString(`{"properties":{"username":{"type":"keyword","index":false},"profile_verified":{"type":"boolean","index":false}}}`),
 			client.Indices.PutMapping.WithContext(ctx),
 		)
 		if err != nil {
@@ -59,12 +59,13 @@ func NewMemberSearch(address string) (*MemberSearch, error) {
 		"mappings": map[string]any{
 			"dynamic": "strict",
 			"properties": map[string]any{
-				"id":         map[string]string{"type": "keyword"},
-				"name":       map[string]string{"type": "text"},
-				"username":   map[string]any{"type": "keyword", "index": false},
-				"avatar_url": map[string]any{"type": "keyword", "index": false},
-				"bio":        map[string]any{"type": "text", "index": false},
-				"created_at": map[string]string{"type": "date"},
+				"id":               map[string]string{"type": "keyword"},
+				"name":             map[string]string{"type": "text"},
+				"username":         map[string]any{"type": "keyword", "index": false},
+				"profile_verified": map[string]any{"type": "boolean", "index": false},
+				"avatar_url":       map[string]any{"type": "keyword", "index": false},
+				"bio":              map[string]any{"type": "text", "index": false},
+				"created_at":       map[string]string{"type": "date"},
 			},
 		},
 	}
