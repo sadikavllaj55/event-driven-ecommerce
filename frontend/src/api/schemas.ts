@@ -94,9 +94,16 @@ export const pagedProductsSchema = z.object({
 export const profileSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
+  username: z.string().optional(),
   avatar_url: z.string(),
   bio: z.string(),
   created_at: z.iso.datetime({ offset: true }),
+});
+export const accountProfileSchema = profileSchema.extend({
+  email: z.string().email(),
+  username: z.string(),
+  phone: z.string(),
+  location: z.string(),
 });
 export const cartSchema = z.object({
   buyer_id: z.string(),

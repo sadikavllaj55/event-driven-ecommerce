@@ -19,6 +19,9 @@ export default function ProductPurchasePanel({
   onAddToCart,
 }: Props) {
   const isOutOfStock = product.stock < 1;
+  const sellerName = sellerProfile?.username
+    ? `@${sellerProfile.username}`
+    : sellerProfile?.name || 'Marketplace seller';
   const attributes = (
     [
       ['Brand', product.brand],
@@ -83,12 +86,12 @@ export default function ProductPurchasePanel({
       >
         <Avatar
           url={sellerProfile?.avatar_url || undefined}
-          name={sellerProfile?.name || 'Seller'}
+          name={sellerName}
           size="sm"
         />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-[var(--market-ink)]">
-            {sellerProfile?.name ?? 'Marketplace seller'}
+            {sellerName}
           </span>
         </span>
         <span aria-hidden="true" className="text-lg text-gray-400">

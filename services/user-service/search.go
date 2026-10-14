@@ -38,6 +38,18 @@ func NewMemberSearch(address string) (*MemberSearch, error) {
 	}
 	response.Body.Close()
 	if response.StatusCode == http.StatusOK {
+		response, err := client.Indices.PutMapping(
+			[]string{memberIndex},
+			bytes.NewBufferString(`{"properties":{"username":{"type":"keyword","index":false}}}`),
+			client.Indices.PutMapping.WithContext(ctx),
+		)
+		if err != nil {
+			return nil, err
+		}
+		defer response.Body.Close()
+		if response.IsError() {
+			return nil, fmt.Errorf("update member index mapping: %s", response.String())
+		}
 		return search, nil
 	}
 	if response.StatusCode != http.StatusNotFound {
@@ -49,6 +61,7 @@ func NewMemberSearch(address string) (*MemberSearch, error) {
 			"properties": map[string]any{
 				"id":         map[string]string{"type": "keyword"},
 				"name":       map[string]string{"type": "text"},
+				"username":   map[string]any{"type": "keyword", "index": false},
 				"avatar_url": map[string]any{"type": "keyword", "index": false},
 				"bio":        map[string]any{"type": "text", "index": false},
 				"created_at": map[string]string{"type": "date"},

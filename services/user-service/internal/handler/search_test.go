@@ -19,7 +19,50 @@ type searchRepository struct {
 }
 
 func (repo *searchRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
-	return &domain.User{ID: id, Name: "Alex Rivera", Status: domain.UserStatusActive, CreatedAt: time.Now()}, nil
+	return &domain.User{
+		ID: id, Name: "Alex Rivera", Email: "alex@example.test", Phone: "+447700900123",
+		Username: "alex", Location: "London", Status: domain.UserStatusActive, CreatedAt: time.Now(),
+	}, nil
+}
+
+func TestPrivateAccountProfile(t *testing.T) {
+	mux := http.NewServeMux()
+	NewUserHandler(service.NewUserService(&searchRepository{}, nil, nil, nil, nil, nil)).RegisterRoutes(mux)
+
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/profile", nil))
+	if response.Code == http.StatusOK {
+		t.Fatal("account profile must require identity")
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/profile", nil)
+	request.Header.Set("X-User-ID", "member")
+	response = httptest.NewRecorder()
+	mux.ServeHTTP(response, request)
+	var profile map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &profile); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != http.StatusOK || profile["id"] != "member" ||
+		profile["email"] != "alex@example.test" || profile["phone"] != "+447700900123" {
+		t.Fatalf("unexpected account profile: %s", response.Body)
+	}
+
+	response = httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/users/member/profile", nil))
+	if strings.Contains(response.Body.String(), "email") || strings.Contains(response.Body.String(), "phone") {
+		t.Fatal("public profile leaked contact details")
+	}
+
+	for _, body := range []string{`{"email":"changed@example.test"}`, `{"created_at":"2020-01-01"}`, `{"id":"other"}`} {
+		request = httptest.NewRequest(http.MethodPut, "/profile", strings.NewReader(body))
+		request.Header.Set("X-User-ID", "member")
+		response = httptest.NewRecorder()
+		mux.ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("read-only field accepted: %s", body)
+		}
+	}
 }
 
 type memberSearch struct {
@@ -48,7 +91,7 @@ func TestSearchProfiles(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &profiles); err != nil {
 		t.Fatal(err)
 	}
-	if len(profiles) != 1 || profiles[0]["name"] != "Alex Rivera" || len(profiles[0]) != 5 {
+	if len(profiles) != 1 || profiles[0]["name"] != "Alex Rivera" || profiles[0]["username"] != "alex" || len(profiles[0]) != 6 {
 		t.Fatalf("expected only public profile fields, got %v", profiles)
 	}
 

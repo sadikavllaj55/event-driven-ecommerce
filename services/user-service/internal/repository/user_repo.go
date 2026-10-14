@@ -23,6 +23,7 @@ type UserRepository interface {
 	ListUsers(ctx context.Context) ([]domain.User, error)
 	UpdateStatus(ctx context.Context, userID, status string) error
 	UpdateBio(ctx context.Context, userID, bio string) error
+	UpdateProfile(ctx context.Context, userID string, update domain.ProfileUpdate) error
 	UpdateAvatarURL(ctx context.Context, userID, url string) error
 	UpdateRole(ctx context.Context, userID, role string) error
 	CountUsers(ctx context.Context) (map[string]int, error)
@@ -57,7 +58,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User, v
 // userColumns is the shared column list for single-user lookups.
 // ORDER MATTERS: it must match the Scan order in getUser.
 const userColumns = `id, email, password_hash, name, role, verified,
-  totp_secret, totp_enabled, status, avatar_url, bio, created_at`
+  totp_secret, totp_enabled, status, avatar_url, bio, created_at, username, phone, location`
 
 // GetByEmail looks up a user by email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
@@ -71,7 +72,7 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domai
 
 func (r *PostgresUserRepository) ListProfileUsers(ctx context.Context) ([]domain.User, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, name, avatar_url, bio, created_at, status FROM users ORDER BY id`,
+		`SELECT id, name, avatar_url, bio, created_at, status, username FROM users ORDER BY id`,
 	)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func (r *PostgresUserRepository) ListProfileUsers(ctx context.Context) ([]domain
 	users := []domain.User{}
 	for rows.Next() {
 		var user domain.User
-		if err := rows.Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Bio, &user.CreatedAt, &user.Status); err != nil {
+		if err := rows.Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Bio, &user.CreatedAt, &user.Status, &user.Username); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -95,6 +96,7 @@ func (r *PostgresUserRepository) getUser(ctx context.Context, query, arg string)
 	err := r.pool.QueryRow(ctx, query, arg).Scan(
 		&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Verified,
 		&totpSecret, &u.TOTPEnabled, &u.Status, &u.AvatarURL, &u.Bio, &u.CreatedAt,
+		&u.Username, &u.Phone, &u.Location,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrUserNotFound
@@ -106,6 +108,25 @@ func (r *PostgresUserRepository) getUser(ctx context.Context, query, arg string)
 		u.TOTPSecret = *totpSecret
 	}
 	return &u, nil
+}
+
+func (r *PostgresUserRepository) UpdateProfile(ctx context.Context, userID string, update domain.ProfileUpdate) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE users SET
+		name = COALESCE($1, name), username = COALESCE($2, username),
+		phone = COALESCE($3, phone), location = COALESCE($4, location),
+		bio = COALESCE($5, bio) WHERE id = $6`,
+		update.Name, update.Username, update.Phone, update.Location, update.Bio, userID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "users_username_unique" {
+			return domain.ErrUsernameExists
+		}
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }
 
 // VerifyByToken marks a user verified if the token matches (one-time use)

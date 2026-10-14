@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS users (
     status user_status NOT NULL DEFAULT 'active',
     avatar_url TEXT NOT NULL DEFAULT '',
     bio TEXT NOT NULL DEFAULT '',
+    username TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -155,4 +158,3 @@ CREATE TABLE IF NOT EXISTS product_images (
 );
 
 CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id);
-

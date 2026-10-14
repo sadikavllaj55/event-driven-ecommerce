@@ -43,6 +43,9 @@ func main() {
 	// --- Wire the layers (dependency injection) ---
 
 	repo := repository.NewPostgresUserRepository(pool)
+	if err := repo.MigrateProfiles(context.Background()); err != nil {
+		log.Fatalf("Failed to migrate user profiles: %v", err)
+	}
 	search, err := NewMemberSearch(cfg.ElasticURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize member search: %v", err)

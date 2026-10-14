@@ -1,8 +1,27 @@
 import { api } from './client';
-import type { PagedProducts, Profile } from '../types';
-import { pagedProductsSchema, profileSchema } from './schemas';
+import type {
+  AccountProfile,
+  PagedProducts,
+  Profile,
+  ProfileUpdate,
+} from '../types';
+import {
+  accountProfileSchema,
+  pagedProductsSchema,
+  profileSchema,
+} from './schemas';
 
 export const profileApi = {
+  me: async (signal?: AbortSignal): Promise<AccountProfile> => {
+    const res = await api.get('/profile', { signal });
+    return accountProfileSchema.parse(res.data);
+  },
+
+  update: async (update: ProfileUpdate): Promise<AccountProfile> => {
+    const res = await api.put('/profile', update);
+    return accountProfileSchema.parse(res.data);
+  },
+
   search: async (query: string): Promise<Profile[]> => {
     const res = await api.get('/users/search', { params: { q: query } });
     return profileSchema.array().parse(res.data);

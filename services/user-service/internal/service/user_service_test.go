@@ -53,6 +53,80 @@ func (repo *profileRepository) UpdateBio(ctx context.Context, id, bio string) er
 	return nil
 }
 
+func (repo *profileRepository) UpdateProfile(ctx context.Context, id string, update domain.ProfileUpdate) error {
+	user, found := repo.users[id]
+	if !found {
+		return domain.ErrUserNotFound
+	}
+	if update.Username != nil && *update.Username != "" {
+		for otherID, other := range repo.users {
+			if otherID != id && strings.EqualFold(other.Username, *update.Username) {
+				return domain.ErrUsernameExists
+			}
+		}
+	}
+	for _, field := range []struct{ source, target *string }{
+		{update.Name, &user.Name}, {update.Username, &user.Username},
+		{update.Phone, &user.Phone}, {update.Location, &user.Location},
+		{update.Bio, &user.Bio},
+	} {
+		if field.source != nil {
+			*field.target = *field.source
+		}
+	}
+	repo.users[id] = user
+	return nil
+}
+
+func TestUpdateAccountProfile(t *testing.T) {
+	repo := &profileRepository{users: map[string]domain.User{
+		"member": {ID: "member", Name: "Original", Email: "member@example.test", Status: domain.UserStatusActive, CreatedAt: time.Now()},
+		"other":  {ID: "other", Username: "taken", Status: domain.UserStatusActive},
+	}}
+	search := &profileSearch{documents: map[string]domain.Profile{}}
+	svc := NewUserService(repo, nil, nil, nil, nil, search)
+	name, username, phone, location, bio := " Alex Rivera ", " Alex_123 ", "+44 7700 900123", " London ", "Hello"
+	updated, err := svc.UpdateProfile(context.Background(), "member", domain.ProfileUpdate{
+		Name: &name, Username: &username, Phone: &phone, Location: &location, Bio: &bio,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Name != "Alex Rivera" || updated.Username != "alex_123" || updated.Phone != phone ||
+		updated.Location != "London" || updated.Email != "member@example.test" ||
+		!updated.CreatedAt.Equal(repo.users["member"].CreatedAt) {
+		t.Fatalf("unexpected saved profile: %+v", updated)
+	}
+	if search.documents["member"].Name != "Alex Rivera" || search.documents["member"].Bio != "Hello" {
+		t.Fatal("public name and bio changes must be indexed")
+	}
+	bio = "Bio only"
+	if _, err := svc.UpdateProfile(context.Background(), "member", domain.ProfileUpdate{Bio: &bio}); err != nil {
+		t.Fatal(err)
+	}
+	if repo.users["member"].Phone != phone || repo.users["member"].Username != "alex_123" {
+		t.Fatal("partial update erased existing fields")
+	}
+	username = "TAKEN"
+	if _, err := svc.UpdateProfile(context.Background(), "member", domain.ProfileUpdate{Username: &username}); !errors.Is(err, domain.ErrUsernameExists) {
+		t.Fatalf("expected username conflict, got %v", err)
+	}
+	for _, invalid := range []domain.ProfileUpdate{
+		{Name: strPointer("")},
+		{Username: strPointer("ab")},
+		{Username: strPointer("has spaces")},
+		{Phone: strPointer("not a number")},
+		{Location: strPointer(strings.Repeat("a", 101))},
+		{Bio: strPointer(strings.Repeat("a", 501))},
+	} {
+		if _, err := svc.UpdateProfile(context.Background(), "member", invalid); err == nil {
+			t.Fatalf("invalid profile accepted: %+v", invalid)
+		}
+	}
+}
+
+func strPointer(value string) *string { return &value }
+
 func (repo *profileRepository) UpdateAvatarURL(ctx context.Context, id, url string) error {
 	user := repo.users[id]
 	user.AvatarURL = url

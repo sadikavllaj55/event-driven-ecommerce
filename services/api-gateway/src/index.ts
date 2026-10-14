@@ -172,6 +172,7 @@ app.get('/users/search', gateway(USER_SERVICE_URL));
 app.get('/users/:id/profile', gateway(USER_SERVICE_URL));
 app.get('/settings/public', gateway(PRODUCT_SERVICE_URL));
 app.put('/profile', authenticate, injectUserId, gateway(USER_SERVICE_URL));
+app.get('/profile', authenticate, injectUserId, gateway(USER_SERVICE_URL));
 app.post(
   '/profile/avatar',
   authenticate,

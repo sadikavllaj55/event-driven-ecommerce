@@ -26,8 +26,9 @@ func TestMemberSearch(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&mapping); err != nil {
 				t.Error(err)
 			}
+
 			mappings := mapping["mappings"].(map[string]any)
-			if mappings["dynamic"] != "strict" || len(mappings["properties"].(map[string]any)) != 5 {
+			if mappings["dynamic"] != "strict" || len(mappings["properties"].(map[string]any)) != 6 {
 				t.Errorf("unexpected public profile mapping: %v", mapping)
 			}
 			json.NewEncoder(writer).Encode(map[string]bool{"acknowledged": true})
@@ -36,7 +37,7 @@ func TestMemberSearch(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&document); err != nil {
 				t.Error(err)
 			}
-			if len(document) != 5 || document["name"] != "Sadik" || request.URL.Query().Get("refresh") != "true" {
+			if len(document) != 6 || document["name"] != "Sadik" || request.URL.Query().Get("refresh") != "true" {
 				t.Errorf("unexpected indexed public profile: %v", document)
 			}
 			json.NewEncoder(writer).Encode(map[string]string{"result": "created"})
@@ -78,5 +79,34 @@ func TestMemberSearch(t *testing.T) {
 	}
 	if requests != 5 {
 		t.Fatalf("expected 5 Elasticsearch requests, got %d", requests)
+	}
+}
+
+func TestExistingMemberIndexUsernameMapping(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("X-Elastic-Product", "Elasticsearch")
+		writer.Header().Set("Content-Type", "application/json")
+		switch {
+		case request.Method == http.MethodHead && request.URL.Path == "/members":
+			writer.WriteHeader(http.StatusOK)
+		case request.Method == http.MethodPut && request.URL.Path == "/members/_mapping":
+			var mapping map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&mapping); err != nil {
+				t.Error(err)
+				return
+			}
+			username := mapping["properties"].(map[string]any)["username"].(map[string]any)
+			if username["type"] != "keyword" || username["index"] != false {
+				t.Errorf("unexpected username mapping: %v", mapping)
+			}
+			json.NewEncoder(writer).Encode(map[string]bool{"acknowledged": true})
+		default:
+			t.Errorf("unexpected request: %s %s", request.Method, request.URL)
+			writer.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+	if _, err := NewMemberSearch(server.URL); err != nil {
+		t.Fatal(err)
 	}
 }

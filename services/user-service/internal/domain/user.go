@@ -18,6 +18,9 @@ type User struct {
 	TOTPEnabled  bool      `json:"totp_enabled"`
 	AvatarURL    string    `json:"avatar_url"`
 	Bio          string    `json:"bio"`
+	Username     string    `json:"username"`
+	Phone        string    `json:"-"`
+	Location     string    `json:"location"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -26,9 +29,32 @@ type User struct {
 type Profile struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
+	Username  string    `json:"username"`
 	AvatarURL string    `json:"avatar_url"`
 	Bio       string    `json:"bio"`
 	CreatedAt time.Time `json:"created_at"` // "member since"
+}
+
+type AccountProfile struct {
+	Profile
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Location string `json:"location"`
+}
+
+type ProfileUpdate struct {
+	Name     *string `json:"name"`
+	Username *string `json:"username"`
+	Phone    *string `json:"phone"`
+	Location *string `json:"location"`
+	Bio      *string `json:"bio"`
+}
+
+func (u User) ToAccountProfile() AccountProfile {
+	return AccountProfile{
+		Profile: u.ToProfile(), Email: u.Email,
+		Phone: u.Phone, Location: u.Location,
+	}
 }
 
 // ToProfile converts a User into its public Profile
@@ -36,6 +62,7 @@ func (u User) ToProfile() Profile {
 	return Profile{
 		ID:        u.ID,
 		Name:      u.Name,
+		Username:  u.Username,
 		AvatarURL: u.AvatarURL,
 		Bio:       u.Bio,
 		CreatedAt: u.CreatedAt,
@@ -82,6 +109,8 @@ func IsValidRole(r string) bool {
 // Domain errors
 var (
 	ErrEmailExists        = errors.New("email already registered")
+	ErrUsernameExists     = errors.New("username already taken")
+	ErrInvalidProfile     = errors.New("name must be 1-100 characters, username must be 3-30 letters, digits or underscores, phone must be a valid international number, and location must be at most 100 characters")
 	ErrUserNotFound       = errors.New("user not found")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrInvalidRole        = errors.New("role must be 'buyer' or 'seller'")

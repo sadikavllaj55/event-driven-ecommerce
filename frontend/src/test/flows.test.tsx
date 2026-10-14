@@ -368,13 +368,14 @@ describe('frontend account and failure flows', () => {
     },
   );
 
-  it('shows the seller profile photo and name on the product page', async () => {
+  it.each(['alex_rivera', ''])('shows the seller username %j with a name fallback on the product page', async (username) => {
     server.use(
       http.get(`${base}/products/product-1`, () => HttpResponse.json(product)),
       http.get(`${base}/users/seller-1/profile`, () =>
         HttpResponse.json({
           id: 'seller-1',
           name: 'Alex Rivera',
+          username,
           avatar_url: 'https://images.example.test/alex.png',
           bio: 'Vintage clothing seller',
           created_at: '2026-10-07T12:00:00Z',
@@ -389,10 +390,14 @@ describe('frontend account and failure flows', () => {
       '/products/product-1',
     );
 
+    const sellerName = username ? `@${username}` : 'Alex Rivera';
     expect(
-      await screen.findByRole('img', { name: 'Alex Rivera' }),
+      await screen.findByRole('img', { name: sellerName }),
     ).toHaveAttribute('src', 'https://images.example.test/alex.png');
-    expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
+    expect(screen.getByText(sellerName)).toBeInTheDocument();
+    if (username) {
+      expect(screen.queryByText('Alex Rivera')).not.toBeInTheDocument();
+    }
   });
 
   it('does not fetch private favorites for a guest', async () => {
@@ -633,13 +638,73 @@ describe('frontend account and failure flows', () => {
     localStorage.setItem('token', tokenFor('buyer-1'));
     server.use(
       http.get(
-        `${base}/users/buyer-1/profile`,
+        `${base}/profile`,
         () => new HttpResponse(null, { status: 500 }),
       ),
     );
     renderApp(<ProfilePage />);
     await screen.findByText(/failed to load profile/i);
     expect(screen.queryByText(/loading profile/i)).not.toBeInTheDocument();
+  });
+
+  it('edits and persists account profile fields without changing email or membership date', async () => {
+    localStorage.setItem('token', tokenFor('buyer-1'));
+    const initial = {
+      id: 'buyer-1', name: 'Alex Rivera', username: 'alex', phone: '',
+      location: 'London', email: 'buyer-1@example.com', avatar_url: '', bio: 'Hello',
+      created_at: '2026-10-07T12:00:00Z',
+    };
+    let saved = initial;
+    let submitted: unknown;
+    server.use(
+      http.get(`${base}/profile`, () => HttpResponse.json(saved)),
+      http.put(`${base}/profile`, async ({ request }) => {
+        submitted = await request.json();
+        saved = { ...initial, name: 'Alex Updated', username: 'alex_new', phone: '+44 7700 900123', location: 'Paris', bio: 'New bio' };
+        return HttpResponse.json(saved);
+      }),
+    );
+    const rendered = renderApp(<ProfilePage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    expect(screen.getByLabelText(/^Email/)).toBeDisabled();
+    for (const [label, value] of [
+      [/^Full name/, 'Alex Updated'], [/^Username/, 'alex_new'],
+      [/^Phone number/, '+44 7700 900123'], [/^Location/, 'Paris'],
+      [/^Short bio/, 'New bio'],
+    ] as const) {
+      await userEvent.clear(screen.getByLabelText(label));
+      await userEvent.type(screen.getByLabelText(label), value);
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByRole('button', { name: 'Edit profile' });
+    expect(submitted).toEqual({
+      name: 'Alex Updated', username: 'alex_new', phone: '+44 7700 900123',
+      location: 'Paris', bio: 'New bio',
+    });
+    expect(screen.getByText('Paris')).toBeInTheDocument();
+    expect(rendered.client.getQueryData(['profile', 'buyer-1'])).not.toHaveProperty('phone');
+    rendered.unmount();
+    renderApp(<ProfilePage />);
+    expect(await screen.findByText('Paris')).toBeInTheDocument();
+  });
+
+  it('keeps unsaved profile edits visible when saving fails', async () => {
+    localStorage.setItem('token', tokenFor('buyer-1'));
+    server.use(
+      http.get(`${base}/profile`, () => HttpResponse.json({
+        id: 'buyer-1', name: 'Alex', username: '', phone: '', location: '',
+        email: 'buyer-1@example.com', avatar_url: '', bio: '', created_at: '2026-10-07T12:00:00Z',
+      })),
+      http.put(`${base}/profile`, () => HttpResponse.json({ error: 'username already taken' }, { status: 409 })),
+    );
+    renderApp(<ProfilePage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    await userEvent.type(screen.getByLabelText(/^Username/), 'taken');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('username already taken');
+    expect(screen.getByLabelText(/^Username/)).toHaveValue('taken');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
   });
 
   it('does not describe a failed cart request as an empty cart', async () => {

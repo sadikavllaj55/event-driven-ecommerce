@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -333,7 +334,44 @@ func (s *UserService) GetProfile(ctx context.Context, userID string) (*domain.Pr
 	return &p, nil
 }
 
-// UpdateBio validates and saves the current user's bio
+var usernamePattern = regexp.MustCompile(`^[a-z0-9_]{3,30}$`)
+var phonePattern = regexp.MustCompile(`^\+?[0-9][0-9 ()-]{5,28}[0-9]$`)
+
+func (s *UserService) GetAccountProfile(ctx context.Context, userID string) (*domain.AccountProfile, error) {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	profile := user.ToAccountProfile()
+	return &profile, nil
+}
+
+func (s *UserService) UpdateProfile(ctx context.Context, userID string, update domain.ProfileUpdate) (*domain.AccountProfile, error) {
+	for _, field := range []*string{update.Name, update.Username, update.Phone, update.Location, update.Bio} {
+		if field != nil {
+			*field = strings.TrimSpace(*field)
+		}
+	}
+	if update.Username != nil {
+		*update.Username = strings.ToLower(*update.Username)
+	}
+	if update.Name != nil && (utf8.RuneCountInString(*update.Name) == 0 || utf8.RuneCountInString(*update.Name) > 100) ||
+		update.Username != nil && *update.Username != "" && !usernamePattern.MatchString(*update.Username) ||
+		update.Phone != nil && *update.Phone != "" && !phonePattern.MatchString(*update.Phone) ||
+		update.Location != nil && utf8.RuneCountInString(*update.Location) > 100 {
+		return nil, domain.ErrInvalidProfile
+	}
+	if update.Bio != nil && utf8.RuneCountInString(*update.Bio) > domain.MaxBioLength {
+		return nil, domain.ErrBioTooLong
+	}
+	if err := s.repo.UpdateProfile(ctx, userID, update); err != nil {
+		return nil, err
+	}
+	s.syncProfile(ctx, userID)
+	return s.GetAccountProfile(ctx, userID)
+}
+
+// UpdateBio validates and saves the current user's bio.
 func (s *UserService) UpdateBio(ctx context.Context, userID, bio string) (*domain.Profile, error) {
 	bio = strings.TrimSpace(bio)
 	if utf8.RuneCountInString(bio) > domain.MaxBioLength {

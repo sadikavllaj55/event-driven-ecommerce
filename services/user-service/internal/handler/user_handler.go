@@ -46,6 +46,7 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /2fa/enable", h.enable2FA)
 	mux.HandleFunc("POST /login/2fa", h.login2FA)
 	mux.HandleFunc("GET /users/{id}/profile", h.getProfile)
+	mux.HandleFunc("GET /profile", h.getAccountProfile)
 	mux.HandleFunc("PUT /profile", h.updateProfile)
 	mux.HandleFunc("POST /profile/avatar", h.uploadAvatar)
 
@@ -196,10 +197,13 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		errors.Is(err, domain.ErrWeakPassword),
 		errors.Is(err, domain.ErrInvalidRole),
 		errors.Is(err, domain.ErrBioTooLong),
+		errors.Is(err, domain.ErrInvalidProfile),
 		errors.Is(err, domain.ErrInvalidImage):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, domain.ErrEmailExists):
 		writeError(w, http.StatusConflict, "email already registered")
+	case errors.Is(err, domain.ErrUsernameExists):
+		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, domain.ErrInvalidCredentials):
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 	case errors.Is(err, domain.ErrEmailNotVerified):
@@ -263,22 +267,36 @@ func (h *UserHandler) getProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, profile)
 }
 
-// updateProfile updates the current user's bio
+func (h *UserHandler) getAccountProfile(w http.ResponseWriter, r *http.Request) {
+	userID := userFromHeader(w, r)
+	if userID == "" {
+		return
+	}
+	profile, err := h.svc.GetAccountProfile(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profile)
+}
+
+// updateProfile updates only editable fields belonging to the current user.
 func (h *UserHandler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	userID := userFromHeader(w, r)
 	if userID == "" {
 		return
 	}
 
-	var req struct {
-		Bio string `json:"bio"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var req domain.ProfileUpdate
+	r.Body = http.MaxBytesReader(w, r.Body, 8192)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
 
-	profile, err := h.svc.UpdateBio(r.Context(), userID, req.Bio)
+	profile, err := h.svc.UpdateProfile(r.Context(), userID, req)
 	if err != nil {
 		writeServiceError(w, err)
 		return

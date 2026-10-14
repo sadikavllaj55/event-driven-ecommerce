@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 export const queryKeys = {
   private: ['private'] as const,
+  accountProfile: (userId?: string) => ['private', userId, 'profile'] as const,
   cart: (userId?: string) => ['private', userId, 'cart'] as const,
   favorites: (userId?: string) => ['private', userId, 'favorites'] as const,
   orders: (userId?: string) => ['private', userId, 'orders'] as const,

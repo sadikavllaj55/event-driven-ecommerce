@@ -113,7 +113,20 @@ export interface Order {
 export interface Profile {
   id: string;
   name: string;
+  username?: string;
   avatar_url: string;
   bio: string;
   created_at: string;
 }
+
+export interface AccountProfile extends Profile {
+  email: string;
+  username: string;
+  phone: string;
+  location: string;
+}
+
+export type ProfileUpdate = Pick<
+  AccountProfile,
+  'name' | 'username' | 'phone' | 'location' | 'bio'
+>;
