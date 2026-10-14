@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -7,8 +7,8 @@ import { queryKeys } from '../api/queryKeys';
 import { useAuth } from '../auth/AuthContext';
 import { ROUTES } from '../constants/routes';
 import { getErrorMessage } from '../utils/errors';
-import ImageUploader from '../components/ImageUploader';
 import Avatar from '../components/Avatar';
+import PhoneNumberField from '../components/PhoneNumberField';
 import type { AccountProfile, Profile, ProfileUpdate } from '../types';
 
 const inputClass =
@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoError, setPhotoError] = useState('');
   const accountKey = queryKeys.accountProfile(user?.sub);
   const { data: profile, isLoading, isError, refetch } = useQuery({
     queryKey: accountKey,
@@ -74,13 +76,28 @@ export default function ProfilePage() {
       <section className="rounded-2xl border border-[var(--market-border)] bg-white p-5 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--market-border)] pb-6">
           <div className="flex min-w-0 items-center gap-4">
-            <Avatar url={profile.avatar_url} name={profile.name} size="lg" />
+            <div className="shrink-0">
+              <Avatar url={profile.avatar_url} name={profile.name} size="lg" />
+            </div>
             <div className="min-w-0">
               <h2 className="break-words text-xl font-semibold text-[var(--market-ink)]">{profile.name}</h2>
               <p className="mt-1 text-sm text-gray-500">{profile.username ? `@${profile.username}` : 'No username set'}</p>
               <p className="mt-2 text-xs text-gray-500">
                 Member since {new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
               </p>
+              {editing && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => photoInput.current?.click()}
+                    disabled={uploadAvatar.isPending}
+                    className="rounded-full border border-[var(--market-border)] px-3 py-1.5 text-xs font-semibold text-[var(--market-primary)] transition hover:bg-[var(--market-primary-soft)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--market-primary)]/15 disabled:opacity-50"
+                  >
+                    {uploadAvatar.isPending ? 'Uploading...' : 'Change photo'}
+                  </button>
+                  <p className="mt-1.5 text-xs text-gray-500">Image up to 2 MB. Saved immediately.</p>
+                </div>
+              )}
             </div>
           </div>
           {!editing && <button onClick={() => setEditing(true)} className={buttonClass}>Edit profile</button>}
@@ -88,38 +105,59 @@ export default function ProfilePage() {
 
         {editing ? (
           <>
-            <div className="mt-6">
-              <p className="mb-2 text-sm font-medium text-[var(--market-ink)]">Profile picture</p>
-              <fieldset disabled={uploadAvatar.isPending}>
-                <ImageUploader images={[]} max={1} onChange={(files) => {
-                  if (files[0]) uploadAvatar.mutate(files[0]);
-                }} />
-              </fieldset>
-              <p className="mt-2 text-xs text-gray-500">{uploadAvatar.isPending ? 'Uploading...' : 'Photo changes are saved immediately.'}</p>
-            </div>
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/*"
+              aria-label="Profile photo"
+              className="hidden"
+              disabled={uploadAvatar.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                setPhotoError('');
+                if (!file.type.startsWith('image/')) {
+                  setPhotoError('Please select an image.');
+                  return;
+                }
+                if (file.size > 2 * 1024 * 1024) {
+                  setPhotoError('Image must be at most 2 MB.');
+                  return;
+                }
+                uploadAvatar.mutate(file);
+              }}
+            />
+            {photoError && <p role="alert" className="mt-3 text-sm text-red-700">{photoError}</p>}
             <ProfileEditor key={profile.id} profile={profile} onSaved={onSaved} onCancel={() => setEditing(false)} uploading={uploadAvatar.isPending} />
           </>
         ) : (
           <>
-            <dl className="mt-6 grid gap-6 sm:grid-cols-2">
+            <section className="mt-6 rounded-xl bg-[var(--market-page)] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-[var(--market-ink)]">Contact details</h3>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-500">Only visible to you</span>
+              </div>
+              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               {([
-                ['Full name', profile.name],
-                ['Username', profile.username ? `@${profile.username}` : 'Not set'],
                 ['Email', profile.email],
                 ['Phone number', profile.phone || 'Not set'],
-                ['Location', profile.location || 'Not set'],
-                ['Member since', new Date(profile.created_at).toLocaleDateString()],
               ] as const).map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs font-medium text-gray-500">{label}</dt>
                   <dd className="mt-1 break-words text-sm font-medium text-[var(--market-ink)]">{value}</dd>
                 </div>
               ))}
-            </dl>
-            <div className="mt-6 border-t border-[var(--market-border)] pt-6">
+              </dl>
+            </section>
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-[var(--market-ink)]">Location</h3>
+              <p className="mt-2 text-sm text-gray-600">{profile.location || 'No location added yet.'}</p>
+            </div>
+            <div className="mt-5 border-t border-[var(--market-border)] pt-5">
               <h3 className="text-sm font-semibold text-[var(--market-ink)]">Short bio</h3>
               <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-600">{profile.bio || 'Tell the community a little about yourself.'}</p>
-              <p className="mt-5 text-xs text-gray-500">Your email and phone number are private. Your name, photo, and bio appear on your public profile.</p>
+              <p className="mt-5 text-xs text-gray-500">Your name, username, photo, and bio appear on your public profile.</p>
             </div>
           </>
         )}
@@ -142,6 +180,10 @@ function ProfileEditor({ profile, onSaved, onCancel, uploading }: {
     name: profile.name, username: profile.username, phone: profile.phone,
     location: profile.location, bio: profile.bio,
   });
+  const [initialValues] = useState(values);
+  const isDirty = (Object.keys(values) as (keyof ProfileUpdate)[]).some(
+    (key) => values[key] !== initialValues[key],
+  );
   const save = useMutation({
     mutationFn: () => profileApi.update(values),
     onSuccess: (updated) => {
@@ -153,7 +195,7 @@ function ProfileEditor({ profile, onSaved, onCancel, uploading }: {
   return (
     <form className="mt-6" onSubmit={(event) => {
       event.preventDefault();
-      save.mutate();
+      if (isDirty && !save.isPending && !uploading) save.mutate();
     }}>
       <fieldset disabled={save.isPending || uploading} className="grid gap-5 sm:grid-cols-2">
         <label className="text-sm font-medium text-[var(--market-ink)]">
@@ -170,10 +212,10 @@ function ProfileEditor({ profile, onSaved, onCancel, uploading }: {
           <input className={inputClass} type="email" value={profile.email} disabled />
           <span className="mt-1 block text-xs font-normal text-gray-500">Your verified login email cannot be changed here.</span>
         </label>
-        <label className="text-sm font-medium text-[var(--market-ink)]">
-          Phone number
-          <input className={inputClass} type="tel" autoComplete="tel" maxLength={30} placeholder="+44 7700 900123" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} />
-        </label>
+        <PhoneNumberField
+          value={values.phone}
+          onChange={(phone) => setValues({ ...values, phone })}
+        />
         <label className="text-sm font-medium text-[var(--market-ink)] sm:col-span-2">
           Location
           <input className={inputClass} maxLength={100} placeholder="City, country" value={values.location} onChange={(event) => setValues({ ...values, location: event.target.value })} />
@@ -187,7 +229,7 @@ function ProfileEditor({ profile, onSaved, onCancel, uploading }: {
       {save.isError && <p role="alert" className="mt-4 text-sm text-red-700">{getErrorMessage(save.error, 'Failed to save profile')}</p>}
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onCancel} disabled={save.isPending || uploading} className="rounded-full border border-[var(--market-border)] px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-[var(--market-page)] disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={save.isPending || uploading} className={buttonClass}>{save.isPending ? 'Saving...' : 'Save changes'}</button>
+        <button type="submit" disabled={!isDirty || save.isPending || uploading} className={buttonClass}>{save.isPending ? 'Saving...' : 'Save changes'}</button>
       </div>
     </form>
   );

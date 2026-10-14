@@ -42,12 +42,16 @@ func NewPostgresUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
 // Create inserts a new (unverified) user with a verification token
 func (r *PostgresUserRepository) Create(ctx context.Context, user domain.User, verificationToken string) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO users (id, email, password_hash, name, role, verified, verification_token, created_at)
-		 VALUES ($1, $2, $3, $4, $5, false, $6, $7)`,
-		user.ID, user.Email, user.PasswordHash, user.Name, user.Role, verificationToken, user.CreatedAt,
+		`INSERT INTO users (id, email, password_hash, name, role, verified, verification_token, created_at, username)
+		 VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8)`,
+		user.ID, user.Email, user.PasswordHash, user.Name, user.Role, verificationToken, user.CreatedAt, user.Username,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.ConstraintName == "users_username_unique" {
+				return domain.ErrUsernameExists
+			}
 			return domain.ErrEmailExists
 		}
 		return err

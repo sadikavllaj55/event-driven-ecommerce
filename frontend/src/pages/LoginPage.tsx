@@ -25,6 +25,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [role, setRole] = useState('buyer');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -37,10 +39,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setInfo('');
+    setSubmitting(true);
 
     try {
       if (mode === 'register') {
-        await api.post('/register', { email, password, name, role });
+        await api.post('/register', {
+          email, password, name: name.trim(),
+          username: username.trim().toLowerCase(), role,
+        });
         setInfo(
           'Registered! Check the notification-service logs for your verification link, then log in.',
         );
@@ -60,6 +66,8 @@ export default function LoginPage() {
         return;
       }
       setError(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -85,8 +93,8 @@ export default function LoginPage() {
             : 'Sign up'}
       </h1>
 
-      {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-      {info && <p className="text-teal-600 text-sm mb-3">{info}</p>}
+      {error && <p role="alert" className="text-red-500 text-sm mb-3">{error}</p>}
+      {info && <p role="status" className="text-teal-600 text-sm mb-3">{info}</p>}
 
       {needs2FA ? (
         <form onSubmit={handle2FA} className="space-y-3">
@@ -104,13 +112,41 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'register' && (
             <>
-              <input
+              <label className="block text-sm font-medium text-[var(--market-ink)]">
+                Full name
+                <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Name"
+                placeholder="Full name"
+                autoComplete="name"
+                required
+                maxLength={100}
+                disabled={submitting}
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
+              </label>
+              <label className="block text-sm font-medium text-[var(--market-ink)]">
+                Username
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. alex_rivera"
+                  autoComplete="username"
+                  required
+                  minLength={3}
+                  maxLength={30}
+                  pattern="[a-zA-Z0-9_]{3,30}"
+                  aria-describedby="signup-username-help"
+                  disabled={submitting}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </label>
+              <p id="signup-username-help" className="text-xs text-gray-500">
+                Your public marketplace name. Use 3-30 letters, digits or underscores.
+              </p>
               <select
+                aria-label="Account type"
+                disabled={submitting}
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -122,6 +158,10 @@ export default function LoginPage() {
           )}
           <input
             type="email"
+            aria-label="Email"
+            autoComplete="email"
+            required
+            disabled={submitting}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
@@ -129,19 +169,25 @@ export default function LoginPage() {
           />
           <input
             type="password"
+            aria-label="Password"
+            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+            required
+            minLength={mode === 'register' ? 6 : undefined}
+            disabled={submitting}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
-          <button className="w-full bg-teal-600 text-white py-2 rounded font-medium hover:bg-teal-700">
-            {mode === 'login' ? 'Log in' : 'Sign up'}
+          <button disabled={submitting} className="w-full bg-teal-600 text-white py-2 rounded font-medium hover:bg-teal-700 disabled:opacity-50">
+            {submitting ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Sign up'}
           </button>
         </form>
       )}
 
       {!needs2FA && (
         <button
+          disabled={submitting}
           onClick={() => {
             setMode(mode === 'login' ? 'register' : 'login');
             setError('');

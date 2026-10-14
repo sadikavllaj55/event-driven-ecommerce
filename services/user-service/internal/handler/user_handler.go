@@ -26,6 +26,7 @@ type registerRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
+	Username string `json:"username"`
 	Role     string `json:"role"`
 }
 
@@ -63,7 +64,7 @@ func (h *UserHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.Register(r.Context(), req.Email, req.Password, req.Name, req.Role)
+	user, err := h.svc.Register(r.Context(), req.Email, req.Password, req.Name, req.Username, req.Role)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -198,6 +199,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		errors.Is(err, domain.ErrInvalidRole),
 		errors.Is(err, domain.ErrBioTooLong),
 		errors.Is(err, domain.ErrInvalidProfile),
+		errors.Is(err, domain.ErrInvalidUsername),
 		errors.Is(err, domain.ErrInvalidImage):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, domain.ErrEmailExists):

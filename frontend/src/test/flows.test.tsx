@@ -15,6 +15,7 @@ import CartPage from '../pages/CartPage';
 import SellPage from '../pages/seller/SellPage';
 import EditProductPage from '../pages/seller/EditProductPage';
 import Layout from '../components/layout/Layout';
+import LoginPage from '../pages/LoginPage';
 import { Route, Routes } from 'react-router-dom';
 import { server } from './setup';
 import { product, renderApp, tokenFor } from './helpers';
@@ -62,6 +63,50 @@ function AccountCart() {
 }
 
 describe('frontend account and failure flows', () => {
+  it('registers with full name and a normalized username and preserves verification flow', async () => {
+    let submitted: unknown;
+    server.use(
+      http.post(`${base}/register`, async ({ request }) => {
+        submitted = await request.json();
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+    renderApp(<LoginPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'No account? Sign up' }));
+    expect(screen.getByLabelText('Full name')).toBeRequired();
+    expect(screen.getByLabelText('Username')).toBeRequired();
+    await userEvent.type(screen.getByLabelText('Full name'), 'Alex Rivera');
+    await userEvent.type(screen.getByLabelText('Username'), 'Alex_Rivera');
+    await userEvent.type(screen.getByLabelText('Email'), 'alex@example.test');
+    await userEvent.type(screen.getByLabelText('Password'), 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('verification link');
+    expect(submitted).toEqual({
+      name: 'Alex Rivera', username: 'alex_rivera',
+      email: 'alex@example.test', password: 'password', role: 'buyer',
+    });
+    expect(screen.getByRole('button', { name: 'Log in' })).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('keeps sign-up details when a username is already taken', async () => {
+    server.use(
+      http.post(`${base}/register`, () =>
+        HttpResponse.json({ error: 'username already taken' }, { status: 409 }),
+      ),
+    );
+    renderApp(<LoginPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'No account? Sign up' }));
+    await userEvent.type(screen.getByLabelText('Full name'), 'Alex Rivera');
+    await userEvent.type(screen.getByLabelText('Username'), 'taken');
+    await userEvent.type(screen.getByLabelText('Email'), 'alex@example.test');
+    await userEvent.type(screen.getByLabelText('Password'), 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('username already taken');
+    expect(screen.getByLabelText('Username')).toHaveValue('taken');
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeEnabled();
+  });
+
   it('shows the login link instead of the avatar menu to guests', () => {
     renderApp(<Layout />);
 
@@ -666,6 +711,13 @@ describe('frontend account and failure flows', () => {
     );
     const rendered = renderApp(<ProfilePage />);
     await userEvent.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
+    await userEvent.upload(
+      screen.getByLabelText('Profile photo'),
+      new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Image must be at most 2 MB.');
     expect(screen.getByLabelText(/^Email/)).toBeDisabled();
     for (const [label, value] of [
       [/^Full name/, 'Alex Updated'], [/^Username/, 'alex_new'],

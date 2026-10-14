@@ -25,7 +25,7 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--market-page)]">
-      <header className="sticky top-0 z-30 border-b border-[var(--market-border)] bg-white/95 shadow-sm backdrop-blur">
+      <header className="top-0 z-30 border-b border-[var(--market-border)] bg-white/95 shadow-sm backdrop-blur lg:sticky">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
           <Link
             to={ROUTES.home}

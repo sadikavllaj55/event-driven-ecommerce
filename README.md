@@ -11,8 +11,11 @@ Built with **React + TypeScript** (frontend) and **Go**, **TypeScript**, **Rabbi
 A real second-hand marketplace, end-to-end, with **no manual setup**:
 
 - Users register as buyers or sellers with **email verification** and optional **2FA (TOTP)**
+- Sign-up requires a full name, unique username (3–30 letters, digits, or underscores), email, and password. Usernames are normalized to lowercase. Phone, location, and bio can be added later in Edit profile; existing accounts without usernames remain supported.
 - The **My profile** page displays account details and offers an edit form for full name, optional unique username (3–30 letters, digits, or underscores), phone number, location, and a short bio (500 characters). Email and membership date are read-only. `GET /profile` and `PUT /profile` require authentication; email and phone are excluded from public profiles. The user service adds the profile columns and username index automatically on startup for existing databases.
 - Product details identify sellers by **@username**, falling back to their name when no username is set. Usernames are included in public profiles; contact details remain private.
+- The profile phone field includes a country flag and dialing-code selector covering all countries supported by `libphonenumber-js` (including Kosovo). Numbers are saved with their international prefix; clearing the number removes it.
+- Profile contact details are grouped in a private section. Edit mode offers a compact Change photo control (images up to 2 MB, saved immediately), and Save changes is disabled until profile fields change. The navigation header remains sticky on desktop only, leaving more room for forms on smaller screens.
 - Sellers create listings with rich attributes (brand, size, color, condition, model code), **multiple images**, and **categories**; stock auto-registers via events
 - Sellers manage inventory: view their own listings, **pause/reactivate**, **soft-delete**
 - Buyers **browse, search (typo-tolerant, filtered)**, **favorite** items, add to cart, and check out

@@ -34,6 +34,14 @@ func (repo *profileRepository) ListProfileUsers(ctx context.Context) ([]domain.U
 }
 
 func (repo *profileRepository) Create(ctx context.Context, user domain.User, token string) error {
+	for _, existing := range repo.users {
+		if existing.Email == user.Email {
+			return domain.ErrEmailExists
+		}
+		if existing.Username != "" && strings.EqualFold(existing.Username, user.Username) {
+			return domain.ErrUsernameExists
+		}
+	}
 	user.Status = domain.UserStatusActive
 	repo.users[user.ID] = user
 	return nil
@@ -127,6 +135,28 @@ func TestUpdateAccountProfile(t *testing.T) {
 
 func strPointer(value string) *string { return &value }
 
+func TestRegistrationUsername(t *testing.T) {
+	repo := &profileRepository{users: map[string]domain.User{}}
+	search := &profileSearch{documents: map[string]domain.Profile{}}
+	svc := NewUserService(repo, profileHasher{}, profilePublisher{}, nil, nil, search)
+	user, err := svc.Register(context.Background(), "alex@example.test", "password", " Alex Rivera ", " Alex_Rivera ", domain.RoleBuyer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Name != "Alex Rivera" || user.Username != "alex_rivera" ||
+		repo.users[user.ID].Username != "alex_rivera" || search.documents[user.ID].Username != "alex_rivera" {
+		t.Fatalf("username not normalized, persisted and indexed: %+v", user)
+	}
+	if _, err := svc.Register(context.Background(), "another@example.test", "password", "Another", "ALEX_RIVERA", domain.RoleBuyer); !errors.Is(err, domain.ErrUsernameExists) {
+		t.Fatalf("expected username conflict, got %v", err)
+	}
+	for _, username := range []string{"", "ab", "has spaces", strings.Repeat("a", 31)} {
+		if _, err := svc.Register(context.Background(), "new@example.test", "password", "New", username, domain.RoleBuyer); !errors.Is(err, domain.ErrInvalidUsername) {
+			t.Fatalf("expected invalid username for %q, got %v", username, err)
+		}
+	}
+}
+
 func (repo *profileRepository) UpdateAvatarURL(ctx context.Context, id, url string) error {
 	user := repo.users[id]
 	user.AvatarURL = url
@@ -213,7 +243,7 @@ func TestMemberIndexLifecycle(t *testing.T) {
 	if search.documents["active"].Name != "Sadik" {
 		t.Fatal("reactivated member was not indexed")
 	}
-	user, err := svc.Register(ctx, "new@example.test", "password", "New Member", domain.RoleBuyer)
+	user, err := svc.Register(ctx, "new@example.test", "password", "New Member", "new_member", domain.RoleBuyer)
 	if err != nil || search.documents[user.ID].Name != "New Member" {
 		t.Fatalf("registration should index the member: user=%v error=%v", user, err)
 	}

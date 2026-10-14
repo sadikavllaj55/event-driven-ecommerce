@@ -66,13 +66,20 @@ func NewUserService(repo repository.UserRepository, hasher PasswordHasher, publi
 
 // Register validates input, creates an unverified user, and publishes a
 // user.registered event (which triggers the verification email).
-func (s *UserService) Register(ctx context.Context, email, password, name, role string) (*domain.User, error) {
+func (s *UserService) Register(ctx context.Context, email, password, name, username, role string) (*domain.User, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	name = strings.TrimSpace(name)
+	username = strings.ToLower(strings.TrimSpace(username))
 
 	// Validation
 	if email == "" || password == "" || name == "" {
 		return nil, domain.ErrInvalidInput
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return nil, domain.ErrInvalidProfile
+	}
+	if !usernamePattern.MatchString(username) {
+		return nil, domain.ErrInvalidUsername
 	}
 	if len(password) < 6 {
 		return nil, domain.ErrWeakPassword
@@ -97,6 +104,7 @@ func (s *UserService) Register(ctx context.Context, email, password, name, role 
 		Email:        email,
 		PasswordHash: hash,
 		Name:         name,
+		Username:     username,
 		Role:         role,
 		Verified:     false,
 		CreatedAt:    time.Now().UTC(),

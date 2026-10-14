@@ -110,6 +110,7 @@ func IsValidRole(r string) bool {
 var (
 	ErrEmailExists        = errors.New("email already registered")
 	ErrUsernameExists     = errors.New("username already taken")
+	ErrInvalidUsername    = errors.New("username must be 3-30 letters, digits or underscores")
 	ErrInvalidProfile     = errors.New("name must be 1-100 characters, username must be 3-30 letters, digits or underscores, phone must be a valid international number, and location must be at most 100 characters")
 	ErrUserNotFound       = errors.New("user not found")
 	ErrInvalidInput       = errors.New("invalid input")
